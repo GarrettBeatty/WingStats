@@ -132,6 +132,9 @@ jobs:
             # Navigate to app directory
             cd ~/wingstats
 
+            # Prune all unused Docker images and build cache to free up space
+            docker system prune -af
+
             # Pull latest images
             docker pull $ECR_IMAGE
             docker pull $ECR_SCOREBIRD_IMAGE
@@ -146,6 +149,3 @@ jobs:
             # Restart services
             docker compose down
             docker compose up -d
-
-            # Cleanup old images
-            docker image prune -af
