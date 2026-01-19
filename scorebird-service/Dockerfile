@@ -10,6 +10,7 @@ RUN apt-get update --fix-missing && \
     libgl1 \
     libglib2.0-0 \
     git \
+    curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -36,9 +37,11 @@ ENV PYTHONPATH="${PYTHONPATH}:/app/ScoreBird"
 
 # Copy application code
 COPY main.py .
+COPY discord_bot.py .
 
 # Expose port
 EXPOSE 8000
 
-# Run the service
+# Default: run the FastAPI service
+# Use docker-compose to run the Discord bot separately
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,8 +1,33 @@
 services:
+  # ScoreBird OCR API Service
   scorebird:
     build: .
     ports:
       - "8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
+    volumes:
+      - ./players.json:/app/ScoreBird/signups/players.json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Discord Bot Service
+  discord-bot:
+    build: .
+    command: ["python", "discord_bot.py"]
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - API_BASE_URL=${API_BASE_URL:-http://host.docker.internal:3000/api}
+      - SCOREBIRD_URL=http://scorebird:8000
+      - PLAYERS_JSON_PATH=/app/ScoreBird/signups/players.json
+    volumes:
+      - ./players.json:/app/ScoreBird/signups/players.json
+    depends_on:
+      scorebird:
+        condition: service_healthy
     restart: unless-stopped
