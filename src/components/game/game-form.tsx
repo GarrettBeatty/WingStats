@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,6 +15,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { PlayerSelect } from "./player-select";
 
 const playerScoreSchema = z.object({
   name: z.string().min(1, "Player name is required"),
@@ -24,6 +26,7 @@ const playerScoreSchema = z.object({
   cachedFood: z.number().min(0).max(50),
   tuckedCards: z.number().min(0).max(100),
   nectar: z.number().min(0).max(100),
+  duetTokens: z.number().min(0).max(100),
 });
 
 const gameFormSchema = z.object({
@@ -49,6 +52,7 @@ const defaultPlayer = {
   cachedFood: 0,
   tuckedCards: 0,
   nectar: 0,
+  duetTokens: 0,
 };
 
 export function GameForm({
@@ -57,6 +61,23 @@ export function GameForm({
   initialValues,
   submitButtonText = "Save Game",
 }: GameFormProps) {
+  const [playerNames, setPlayerNames] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function fetchPlayerNames() {
+      try {
+        const response = await fetch("/api/players/names");
+        if (response.ok) {
+          const data = await response.json();
+          setPlayerNames(data.wingspanNames || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch player names:", error);
+      }
+    }
+    fetchPlayerNames();
+  }, []);
+
   const form = useForm<GameFormValues>({
     resolver: zodResolver(gameFormSchema),
     defaultValues: initialValues ?? {
@@ -82,7 +103,8 @@ export function GameForm({
       (player.eggs || 0) +
       (player.cachedFood || 0) +
       (player.tuckedCards || 0) +
-      (player.nectar || 0)
+      (player.nectar || 0) +
+      (player.duetTokens || 0)
     );
   };
 
@@ -148,14 +170,19 @@ export function GameForm({
                     <FormItem>
                       <FormLabel>Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Player name" {...field} />
+                        <PlayerSelect
+                          value={field.value}
+                          onChange={field.onChange}
+                          players={playerNames}
+                          placeholder="Select or type player name"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
                   <FormField
                     control={form.control}
                     name={`players.${index}.birds`}
@@ -270,6 +297,24 @@ export function GameForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Nectar</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            {...field}
+                            onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`players.${index}.duetTokens`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Duet</FormLabel>
                         <FormControl>
                           <Input
                             type="number"

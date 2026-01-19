@@ -25,7 +25,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Clone ScoreBird from GitHub (not a pip package)
-RUN git clone --depth 1 https://github.com/Bargoff/ScoreBird.git /app/ScoreBird
+RUN git clone --depth 1 https://github.com/GarrettBeatty/ScoreBird.git /app/ScoreBird
 
 # Create signups directory for players.json
 RUN mkdir -p /app/ScoreBird/signups

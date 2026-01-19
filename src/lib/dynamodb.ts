@@ -41,6 +41,7 @@ interface CreateGameInput {
     cachedFood: number;
     tuckedCards: number;
     nectar: number;
+    duetTokens: number;
   }[];
   uploadedBy?: string;
   imageUrl?: string;
@@ -60,6 +61,7 @@ export async function createGame(input: CreateGameInput): Promise<Game> {
       cachedFood: player.cachedFood,
       tuckedCards: player.tuckedCards,
       nectar: player.nectar,
+      duetTokens: player.duetTokens,
     };
     const totalScore = Object.values(scores).reduce((sum, val) => sum + val, 0);
     return {
@@ -285,6 +287,7 @@ export async function calculatePlayerStats(
     cachedFood: 0,
     tuckedCards: 0,
     nectar: 0,
+    duetTokens: 0,
   };
 
   for (const game of games) {
@@ -302,6 +305,7 @@ export async function calculatePlayerStats(
       categoryTotals.cachedFood += playerScore.scores.cachedFood;
       categoryTotals.tuckedCards += playerScore.scores.tuckedCards;
       categoryTotals.nectar += playerScore.scores.nectar || 0;
+      categoryTotals.duetTokens += playerScore.scores.duetTokens || 0;
     }
   }
 
@@ -323,6 +327,7 @@ export async function calculatePlayerStats(
       cachedFood: categoryTotals.cachedFood / gamesPlayed,
       tuckedCards: categoryTotals.tuckedCards / gamesPlayed,
       nectar: categoryTotals.nectar / gamesPlayed,
+      duetTokens: categoryTotals.duetTokens / gamesPlayed,
     },
   };
 }
@@ -390,6 +395,7 @@ export async function calculateDiscordUserStats(
     cachedFood: 0,
     tuckedCards: 0,
     nectar: 0,
+    duetTokens: 0,
   };
 
   // Convert to lowercase set for matching
@@ -413,6 +419,7 @@ export async function calculateDiscordUserStats(
       categoryTotals.cachedFood += playerScore.scores.cachedFood;
       categoryTotals.tuckedCards += playerScore.scores.tuckedCards;
       categoryTotals.nectar += playerScore.scores.nectar || 0;
+      categoryTotals.duetTokens += playerScore.scores.duetTokens || 0;
     }
   }
 
@@ -436,6 +443,7 @@ export async function calculateDiscordUserStats(
       cachedFood: categoryTotals.cachedFood / gamesPlayed,
       tuckedCards: categoryTotals.tuckedCards / gamesPlayed,
       nectar: categoryTotals.nectar / gamesPlayed,
+      duetTokens: categoryTotals.duetTokens / gamesPlayed,
     },
   };
 }
@@ -559,6 +567,7 @@ interface UpdateGameInput {
     cachedFood: number;
     tuckedCards: number;
     nectar: number;
+    duetTokens: number;
   }[];
 }
 
@@ -606,6 +615,7 @@ export async function updateGame(
       cachedFood: player.cachedFood,
       tuckedCards: player.tuckedCards,
       nectar: player.nectar,
+      duetTokens: player.duetTokens,
     };
     const totalScore = Object.values(scores).reduce((sum, val) => sum + val, 0);
     return {

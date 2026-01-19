@@ -132,6 +132,7 @@ def parse_with_scorebird(image: Image.Image, debug: bool = False) -> dict:
                         "cache": details.get("cache_pts", 0),
                         "tuck": details.get("tuck_pts", 0),
                         "nectar": details.get("nectar_pts", 0),
+                        "duet_pts": details.get("duet_pts", 0),
                     },
                     "total": player_data.get("score", 0),
                 })

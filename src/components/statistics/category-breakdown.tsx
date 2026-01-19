@@ -26,6 +26,7 @@ const COLORS = [
   "hsl(var(--chart-5))",
   "hsl(var(--primary))",
   "hsl(280, 70%, 50%)",
+  "hsl(350, 60%, 65%)", // Salmon/pink for Duet Tokens
 ];
 
 const CATEGORY_LABELS: Record<keyof ScoreBreakdown, string> = {
@@ -36,6 +37,7 @@ const CATEGORY_LABELS: Record<keyof ScoreBreakdown, string> = {
   cachedFood: "Food",
   tuckedCards: "Tucked",
   nectar: "Nectar",
+  duetTokens: "Duet",
 };
 
 export function CategoryBreakdown({

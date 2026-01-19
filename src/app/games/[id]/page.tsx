@@ -106,6 +106,7 @@ export default function GamePage() {
           cachedFood: p.scores.cachedFood,
           tuckedCards: p.scores.tuckedCards,
           nectar: p.scores.nectar || 0,
+          duetTokens: p.scores.duetTokens || 0,
         })),
     };
   }
@@ -245,6 +246,7 @@ export default function GamePage() {
                     <TableHead className="text-right">Food</TableHead>
                     <TableHead className="text-right">Tucked</TableHead>
                     <TableHead className="text-right">Nectar</TableHead>
+                    <TableHead className="text-right">Duet</TableHead>
                     <TableHead className="text-right font-bold">Total</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -275,6 +277,7 @@ export default function GamePage() {
                       <TableCell className="text-right">{player.scores.cachedFood}</TableCell>
                       <TableCell className="text-right">{player.scores.tuckedCards}</TableCell>
                       <TableCell className="text-right">{player.scores.nectar || 0}</TableCell>
+                      <TableCell className="text-right">{player.scores.duetTokens || 0}</TableCell>
                       <TableCell className="text-right font-bold">{player.totalScore}</TableCell>
                     </TableRow>
                   ))}
@@ -325,6 +328,10 @@ export default function GamePage() {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Nectar</span>
                       <span className="font-medium">{player.scores.nectar || 0}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Duet Tokens</span>
+                      <span className="font-medium">{player.scores.duetTokens || 0}</span>
                     </div>
                     <div className="border-t pt-2 mt-2">
                       <div className="flex justify-between font-medium">

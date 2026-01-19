@@ -14,7 +14,7 @@ export default function NewGamePage() {
   const [parsedData, setParsedData] = useState<ParsedScoreData | null>(null);
   const [activeTab, setActiveTab] = useState("manual");
 
-  const handleSubmit = async (data: { playedAt: string; players: { name: string; birds: number; bonus: number; endOfRound: number; eggs: number; cachedFood: number; tuckedCards: number; nectar: number }[] }) => {
+  const handleSubmit = async (data: { playedAt: string; players: { name: string; birds: number; bonus: number; endOfRound: number; eggs: number; cachedFood: number; tuckedCards: number; nectar: number; duetTokens: number }[] }) => {
     setIsSubmitting(true);
     try {
       const response = await fetch("/api/games", {
@@ -60,6 +60,7 @@ export default function NewGamePage() {
             cachedFood: p.cachedFood,
             tuckedCards: p.tuckedCards,
             nectar: p.nectar,
+            duetTokens: p.duetTokens,
           })),
         }),
       });
@@ -146,7 +147,7 @@ export default function NewGamePage() {
                           <div className="text-right">
                             <div className="font-bold">{player.total} pts</div>
                             <div className="text-xs text-muted-foreground">
-                              Birds: {player.birds} | Bonus: {player.bonus} | Round: {player.endOfRound} | Eggs: {player.eggs} | Food: {player.cachedFood} | Tucked: {player.tuckedCards} | Nectar: {player.nectar}
+                              Birds: {player.birds} | Bonus: {player.bonus} | Round: {player.endOfRound} | Eggs: {player.eggs} | Food: {player.cachedFood} | Tucked: {player.tuckedCards} | Nectar: {player.nectar}{player.duetTokens > 0 && ` | Duet: ${player.duetTokens}`}
                             </div>
                           </div>
                         </div>

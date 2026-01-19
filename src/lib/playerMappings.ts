@@ -125,3 +125,17 @@ export function resolvePlayerIdentity(name: string): {
     isRegistered: false,
   };
 }
+
+/**
+ * Get all unique Wingspan player names from all registered users
+ * @returns Array of all Wingspan names sorted alphabetically
+ */
+export function getAllWingspanNames(): string[] {
+  const allNames: string[] = [];
+  for (const data of Object.values(playerMappings)) {
+    allNames.push(...data["wingspan name"]);
+  }
+  return [...new Set(allNames)].sort((a, b) =>
+    a.toLowerCase().localeCompare(b.toLowerCase())
+  );
+}

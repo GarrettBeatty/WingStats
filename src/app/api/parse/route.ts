@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
         end_of_round: number;
         tuck: number;
         nectar?: number;
+        duet_pts?: number;
       };
       total: number;
     }) => ({
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
       cachedFood: player.scores.cache || 0,
       tuckedCards: player.scores.tuck || 0,
       nectar: player.scores.nectar || 0,
+      duetTokens: player.scores.duet_pts || 0,
       total: player.total || 0,
     }));
 

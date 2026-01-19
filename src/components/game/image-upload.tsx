@@ -14,6 +14,7 @@ export interface ParsedScoreData {
     cachedFood: number;
     tuckedCards: number;
     nectar: number;
+    duetTokens: number;
     total: number;
   }[];
   winners: string[];

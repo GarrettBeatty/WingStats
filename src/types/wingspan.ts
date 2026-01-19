@@ -8,6 +8,7 @@ export interface ScoreBreakdown {
   cachedFood: number;
   tuckedCards: number;
   nectar: number;
+  duetTokens: number;
 }
 
 export interface PlayerScore {
@@ -94,6 +95,7 @@ export interface GameFormData {
     cachedFood: number;
     tuckedCards: number;
     nectar: number;
+    duetTokens: number;
   }[];
 }
 
