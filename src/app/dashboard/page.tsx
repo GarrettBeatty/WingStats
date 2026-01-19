@@ -53,6 +53,7 @@ const categoryChartConfig = {
   food: { label: "Food", color: "hsl(var(--chart-5))" },
   tucked: { label: "Tucked", color: "hsl(var(--primary))" },
   nectar: { label: "Nectar", color: "hsl(280, 70%, 50%)" },
+  duet: { label: "Duet", color: "hsl(350, 60%, 65%)" },
 } satisfies ChartConfig;
 
 const trendChartConfig = {
@@ -113,6 +114,7 @@ export default function DashboardPage() {
     { category: "Food", value: Math.round(stats.categoryAverages.cachedFood * 10) / 10, fill: "var(--color-food)" },
     { category: "Tucked", value: Math.round(stats.categoryAverages.tuckedCards * 10) / 10, fill: "var(--color-tucked)" },
     { category: "Nectar", value: Math.round((stats.categoryAverages.nectar || 0) * 10) / 10, fill: "var(--color-nectar)" },
+    { category: "Duet", value: Math.round((stats.categoryAverages.duetTokens || 0) * 10) / 10, fill: "var(--color-duet)" },
   ] : [];
 
   // Transform recent games into trend data (reversed so oldest first)

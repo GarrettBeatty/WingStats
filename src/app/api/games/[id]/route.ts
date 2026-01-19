@@ -11,6 +11,7 @@ const playerScoreSchema = z.object({
   cachedFood: z.number().min(0).max(50),
   tuckedCards: z.number().min(0).max(100),
   nectar: z.number().min(0).max(100),
+  duetTokens: z.number().min(0).max(100),
 });
 
 const updateGameSchema = z.object({

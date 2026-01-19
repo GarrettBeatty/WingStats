@@ -39,6 +39,7 @@ export async function GET() {
       cachedFood: 0,
       tuckedCards: 0,
       nectar: 0,
+      duetTokens: 0,
     };
 
     for (const game of games) {
@@ -50,6 +51,7 @@ export async function GET() {
         categoryTotals.cachedFood += player.scores.cachedFood;
         categoryTotals.tuckedCards += player.scores.tuckedCards;
         categoryTotals.nectar += player.scores.nectar || 0;
+        categoryTotals.duetTokens += player.scores.duetTokens || 0;
       }
     }
 
@@ -63,6 +65,7 @@ export async function GET() {
             cachedFood: categoryTotals.cachedFood / gameCount,
             tuckedCards: categoryTotals.tuckedCards / gameCount,
             nectar: categoryTotals.nectar / gameCount,
+            duetTokens: categoryTotals.duetTokens / gameCount,
           }
         : categoryTotals;
 
