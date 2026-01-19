@@ -125,16 +125,16 @@ def parse_with_scorebird(image: Image.Image, debug: bool = False) -> dict:
                 players.append({
                     "name": player_data.get("name") or player_key,
                     "scores": {
-                        "bird_points": details.get("bird_pts", 0),
-                        "bonus": details.get("bonus_pts", 0),
-                        "end_of_round": details.get("eor_pts", 0),
-                        "egg": details.get("egg_pts", 0),
-                        "cache": details.get("cache_pts", 0),
-                        "tuck": details.get("tuck_pts", 0),
-                        "nectar": details.get("nectar_pts", 0),
-                        "duet_pts": details.get("duet_pts", 0),
+                        "bird_points": details.get("bird_pts") or 0,
+                        "bonus": details.get("bonus_pts") or 0,
+                        "end_of_round": details.get("eor_pts") or 0,
+                        "egg": details.get("egg_pts") or 0,
+                        "cache": details.get("cache_pts") or 0,
+                        "tuck": details.get("tuck_pts") or 0,
+                        "nectar": details.get("nectar_pts") or 0,
+                        "duet_pts": details.get("duet_pts") or 0,
                     },
-                    "total": player_data.get("score", 0),
+                    "total": player_data.get("score") or 0,
                 })
 
         # Get winners (filter out None values)
