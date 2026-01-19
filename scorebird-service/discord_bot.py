@@ -10,11 +10,16 @@ import json
 import os
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 import aiohttp
 import discord
 from discord import app_commands
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv(Path(__file__).parent / ".env")
 
 # Configuration from environment variables
 DISCORD_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")

@@ -17,9 +17,8 @@ const client = new DynamoDBClient({
 
 const docClient = DynamoDBDocumentClient.from(client);
 
-// Table names from CDK
+// Table name from CDK
 const GAMES_TABLE = process.env.GAMES_TABLE || "wingstats-games";
-const USERS_TABLE = process.env.USERS_TABLE || "wingstats-users";
 
 // ============================================
 // Games Operations

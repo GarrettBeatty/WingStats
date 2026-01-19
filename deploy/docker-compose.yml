@@ -1,0 +1,36 @@
+services:
+  app:
+    image: ${ECR_IMAGE}
+    container_name: wingstats-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+    networks:
+      - web
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: wingstats-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - web
+    depends_on:
+      - app
+
+networks:
+  web:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:

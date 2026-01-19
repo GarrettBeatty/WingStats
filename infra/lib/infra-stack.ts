@@ -5,7 +5,6 @@ import { Construct } from 'constructs';
 
 export class InfraStack extends cdk.Stack {
   public readonly gamesTable: dynamodb.Table;
-  public readonly usersTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -40,31 +39,6 @@ export class InfraStack extends cdk.Stack {
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
-    // Users Table - stores user profiles and stats
-    // PK: USER#<userId>, SK: PROFILE
-    this.usersTable = new dynamodb.Table(this, 'UsersTable', {
-      tableName: 'wingstats-users',
-      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
-
-    // GSI for looking up users by Discord ID
-    this.usersTable.addGlobalSecondaryIndex({
-      indexName: 'GSI1-ByDiscordId',
-      partitionKey: { name: 'discordId', type: dynamodb.AttributeType.STRING },
-      projectionType: dynamodb.ProjectionType.ALL,
-    });
-
-    // GSI for leaderboard queries (by average score)
-    this.usersTable.addGlobalSecondaryIndex({
-      indexName: 'GSI2-Leaderboard',
-      partitionKey: { name: 'GSI2PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'averageScore', type: dynamodb.AttributeType.NUMBER },
-      projectionType: dynamodb.ProjectionType.ALL,
-    });
-
     // ============================================
     // IAM User for local development
     // ============================================
@@ -75,7 +49,6 @@ export class InfraStack extends cdk.Stack {
 
     // Grant permissions to the dev user
     this.gamesTable.grantReadWriteData(devUser);
-    this.usersTable.grantReadWriteData(devUser);
 
     // ============================================
     // Outputs
@@ -84,11 +57,6 @@ export class InfraStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'GamesTableName', {
       value: this.gamesTable.tableName,
       description: 'DynamoDB Games Table Name',
-    });
-
-    new cdk.CfnOutput(this, 'UsersTableName', {
-      value: this.usersTable.tableName,
-      description: 'DynamoDB Users Table Name',
     });
 
     new cdk.CfnOutput(this, 'Region', {
