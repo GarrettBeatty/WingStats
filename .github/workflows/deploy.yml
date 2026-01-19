@@ -9,6 +9,7 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: wingstats
+  ECR_SCOREBIRD_REPOSITORY: wingstats-scorebird
 
 jobs:
   build-and-deploy:
@@ -29,30 +30,39 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag, and push image to Amazon ECR
+      - name: Build, tag, and push images to Amazon ECR
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          # Build and push main app
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
+          # Build and push scorebird service
+          docker build -t $ECR_REGISTRY/$ECR_SCOREBIRD_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_SCOREBIRD_REPOSITORY:latest ./scorebird-service
+          docker push $ECR_REGISTRY/$ECR_SCOREBIRD_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_SCOREBIRD_REPOSITORY:latest
+          echo "scorebird_image=$ECR_REGISTRY/$ECR_SCOREBIRD_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         env:
           ECR_IMAGE: ${{ steps.build-image.outputs.image }}
+          ECR_SCOREBIRD_IMAGE: ${{ steps.build-image.outputs.scorebird_image }}
           AWS_REGION: ${{ env.AWS_REGION }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           DOMAIN: ${{ secrets.DOMAIN }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: ECR_IMAGE,AWS_REGION,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,DOMAIN
+          envs: ECR_IMAGE,ECR_SCOREBIRD_IMAGE,AWS_REGION,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,DOMAIN,DISCORD_BOT_TOKEN
           script: |
             # Login to ECR
             aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
@@ -60,13 +70,16 @@ jobs:
             # Navigate to app directory
             cd ~/wingstats
 
-            # Pull latest image
+            # Pull latest images
             docker pull $ECR_IMAGE
+            docker pull $ECR_SCOREBIRD_IMAGE
 
             # Update .env file
             echo "ECR_IMAGE=$ECR_IMAGE" > .env
+            echo "ECR_SCOREBIRD_IMAGE=$ECR_SCOREBIRD_IMAGE" >> .env
             echo "AWS_REGION=$AWS_REGION" >> .env
             echo "DOMAIN=$DOMAIN" >> .env
+            echo "DISCORD_BOT_TOKEN=$DISCORD_BOT_TOKEN" >> .env
 
             # Restart services
             docker compose down

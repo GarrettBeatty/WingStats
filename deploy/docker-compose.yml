@@ -6,10 +6,52 @@ services:
     environment:
       - NODE_ENV=production
       - AWS_REGION=${AWS_REGION:-us-east-1}
+      - SCOREBIRD_URL=http://scorebird:8000
     networks:
       - web
     expose:
       - "3000"
+    depends_on:
+      scorebird:
+        condition: service_healthy
+
+  scorebird:
+    image: ${ECR_SCOREBIRD_IMAGE:-wingstats-scorebird:latest}
+    container_name: wingstats-scorebird
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./players.json:/app/ScoreBird/signups/players.json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - web
+
+  discord-bot:
+    image: ${ECR_SCOREBIRD_IMAGE:-wingstats-scorebird:latest}
+    container_name: wingstats-discord-bot
+    command: ["python", "discord_bot.py"]
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - API_BASE_URL=http://app:3000/api
+      - SCOREBIRD_URL=http://scorebird:8000
+      - PLAYERS_JSON_PATH=/app/ScoreBird/signups/players.json
+      - SITE_BASE_URL=https://${DOMAIN}
+    volumes:
+      - ./players.json:/app/ScoreBird/signups/players.json
+    depends_on:
+      scorebird:
+        condition: service_healthy
+      app:
+        condition: service_started
+    networks:
+      - web
 
   caddy:
     image: caddy:2-alpine

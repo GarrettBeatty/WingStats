@@ -26,6 +26,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:3000/api")
 SCOREBIRD_URL = os.getenv("SCOREBIRD_URL", "http://localhost:8000")
 PLAYERS_JSON_PATH = os.getenv("PLAYERS_JSON_PATH", "/app/ScoreBird/signups/players.json")
+SITE_BASE_URL = os.getenv("SITE_BASE_URL", "https://wingstats.beatty.codes")
 
 # Discord intents
 intents = discord.Intents.default()
@@ -245,7 +246,8 @@ async def on_message(message: discord.Message):
             if mapped_winners:
                 response_lines.append(f"\n:trophy: Winner: **{', '.join(mapped_winners)}**")
 
-            response_lines.append(f"\n`Game ID: {game_id}`")
+            game_url = f"{SITE_BASE_URL}/games/{game_id}"
+            response_lines.append(f"\n:link: {game_url}")
 
             await processing_msg.edit(content="\n".join(response_lines))
 

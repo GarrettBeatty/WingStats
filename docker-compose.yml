@@ -9,4 +9,52 @@ services:
       - AWS_REGION=${AWS_REGION:-us-east-1}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - SCOREBIRD_URL=http://scorebird:8000
+    depends_on:
+      scorebird:
+        condition: service_healthy
+    networks:
+      - wingstats
     restart: unless-stopped
+
+  scorebird:
+    build: ./scorebird-service
+    container_name: wingstats-scorebird
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./scorebird-service/players.json:/app/ScoreBird/signups/players.json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - wingstats
+    restart: unless-stopped
+
+  discord-bot:
+    build: ./scorebird-service
+    container_name: wingstats-discord-bot
+    command: ["python", "discord_bot.py"]
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - API_BASE_URL=http://app:3000/api
+      - SCOREBIRD_URL=http://scorebird:8000
+      - PLAYERS_JSON_PATH=/app/ScoreBird/signups/players.json
+      - SITE_BASE_URL=${SITE_BASE_URL:-https://wingstats.beatty.codes}
+    volumes:
+      - ./scorebird-service/players.json:/app/ScoreBird/signups/players.json
+    depends_on:
+      scorebird:
+        condition: service_healthy
+      app:
+        condition: service_started
+    networks:
+      - wingstats
+    restart: unless-stopped
+
+networks:
+  wingstats:
+    driver: bridge
