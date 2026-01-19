@@ -114,16 +114,28 @@ async def on_message(message: discord.Message):
     if bot.user not in message.mentions:
         return
 
-    # Check for image attachments
+    # Check for image attachments in the current message
     image_attachments = [
         att for att in message.attachments
         if att.content_type and att.content_type.startswith("image/")
     ]
 
+    # If no images in current message, check if replying to a message with images
+    if not image_attachments and message.reference:
+        try:
+            # Fetch the referenced (replied-to) message
+            referenced_msg = await message.channel.fetch_message(message.reference.message_id)
+            image_attachments = [
+                att for att in referenced_msg.attachments
+                if att.content_type and att.content_type.startswith("image/")
+            ]
+        except discord.NotFound:
+            pass  # Referenced message was deleted
+
     if not image_attachments:
         await message.reply(
             "Please attach a Wingspan scorecard image when tagging me!\n"
-            "Example: `@WingStats` with an image attached"
+            "You can also reply to a message that has a scorecard image."
         )
         return
 
