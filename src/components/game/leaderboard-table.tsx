@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -11,7 +11,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { LeaderboardEntry } from "@/types/wingspan";
+
+interface LeaderboardEntry {
+  rank: number;
+  playerName: string;
+  gamesPlayed: number;
+  winRate: number;
+  averageScore: number;
+}
 
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[];
@@ -52,20 +59,19 @@ export function LeaderboardTable({ entries }: LeaderboardTableProps) {
       </TableHeader>
       <TableBody>
         {entries.map((entry) => (
-          <TableRow key={entry.userId}>
+          <TableRow key={entry.playerName}>
             <TableCell>{getRankBadge(entry.rank)}</TableCell>
             <TableCell>
               <Link
-                href={`/players/${entry.userId}`}
+                href={`/players/${encodeURIComponent(entry.playerName)}`}
                 className="flex items-center gap-2 hover:underline"
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={entry.avatarUrl} alt={entry.username} />
                   <AvatarFallback>
-                    {entry.username.slice(0, 2).toUpperCase()}
+                    {entry.playerName.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="font-medium">{entry.username}</span>
+                <span className="font-medium">{entry.playerName}</span>
               </Link>
             </TableCell>
             <TableCell className="text-right">{entry.gamesPlayed}</TableCell>

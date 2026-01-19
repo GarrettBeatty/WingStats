@@ -1,77 +1,33 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RecentGamesTable } from "@/components/game/recent-games-table";
 import type { Game } from "@/types/wingspan";
 
-// Mock data - will be replaced with actual data fetching
-const mockGames: Game[] = [
-  {
-    id: "1",
-    playedAt: "2024-01-15",
-    playerCount: 3,
-    uploadedBy: "user1",
-    createdAt: "2024-01-15",
-    players: [
-      {
-        id: "p1",
-        gameId: "1",
-        playerName: "Alice",
-        position: 1,
-        scores: { birds: 45, bonus: 15, endOfRound: 10, eggs: 18, cachedFood: 4, tuckedCards: 8 },
-        totalScore: 100,
-        isWinner: true,
-      },
-      {
-        id: "p2",
-        gameId: "1",
-        playerName: "Bob",
-        position: 2,
-        scores: { birds: 38, bonus: 12, endOfRound: 8, eggs: 14, cachedFood: 6, tuckedCards: 5 },
-        totalScore: 83,
-        isWinner: false,
-      },
-      {
-        id: "p3",
-        gameId: "1",
-        playerName: "Charlie",
-        position: 3,
-        scores: { birds: 40, bonus: 10, endOfRound: 9, eggs: 12, cachedFood: 3, tuckedCards: 7 },
-        totalScore: 81,
-        isWinner: false,
-      },
-    ],
-  },
-  {
-    id: "2",
-    playedAt: "2024-01-14",
-    playerCount: 2,
-    uploadedBy: "user1",
-    createdAt: "2024-01-14",
-    players: [
-      {
-        id: "p4",
-        gameId: "2",
-        playerName: "Alice",
-        position: 1,
-        scores: { birds: 52, bonus: 18, endOfRound: 12, eggs: 20, cachedFood: 8, tuckedCards: 10 },
-        totalScore: 120,
-        isWinner: true,
-      },
-      {
-        id: "p5",
-        gameId: "2",
-        playerName: "Diana",
-        position: 2,
-        scores: { birds: 48, bonus: 14, endOfRound: 11, eggs: 16, cachedFood: 5, tuckedCards: 9 },
-        totalScore: 103,
-        isWinner: false,
-      },
-    ],
-  },
-];
-
 export default function GamesPage() {
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchGames() {
+      try {
+        const response = await fetch("/api/games?limit=50");
+        if (!response.ok) throw new Error("Failed to fetch games");
+        const data = await response.json();
+        setGames(data.games);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load games");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchGames();
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -91,7 +47,17 @@ export default function GamesPage() {
           <CardTitle>All Games</CardTitle>
         </CardHeader>
         <CardContent>
-          <RecentGamesTable games={mockGames} />
+          {loading ? (
+            <div className="flex h-32 items-center justify-center text-muted-foreground">
+              Loading games...
+            </div>
+          ) : error ? (
+            <div className="flex h-32 items-center justify-center text-red-500">
+              {error}
+            </div>
+          ) : (
+            <RecentGamesTable games={games} />
+          )}
         </CardContent>
       </Card>
     </div>

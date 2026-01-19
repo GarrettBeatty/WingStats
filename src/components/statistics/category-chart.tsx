@@ -30,6 +30,7 @@ export function CategoryRadarChart({
     { category: "Eggs", value: data.eggs, fullMark: 30 },
     { category: "Food", value: data.cachedFood, fullMark: 20 },
     { category: "Tucked", value: data.tuckedCards, fullMark: 30 },
+    { category: "Nectar", value: data.nectar || 0, fullMark: 30 },
   ];
 
   return (

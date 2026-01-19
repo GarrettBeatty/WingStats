@@ -35,6 +35,7 @@ interface CreateGameInput {
     eggs: number;
     cachedFood: number;
     tuckedCards: number;
+    nectar: number;
   }[];
   uploadedBy?: string;
   imageUrl?: string;
@@ -53,6 +54,7 @@ export async function createGame(input: CreateGameInput): Promise<Game> {
       eggs: player.eggs,
       cachedFood: player.cachedFood,
       tuckedCards: player.tuckedCards,
+      nectar: player.nectar,
     };
     const totalScore = Object.values(scores).reduce((sum, val) => sum + val, 0);
     return {
@@ -271,6 +273,7 @@ export async function calculatePlayerStats(
     eggs: 0,
     cachedFood: 0,
     tuckedCards: 0,
+    nectar: 0,
   };
 
   for (const game of games) {
@@ -287,6 +290,7 @@ export async function calculatePlayerStats(
       categoryTotals.eggs += playerScore.scores.eggs;
       categoryTotals.cachedFood += playerScore.scores.cachedFood;
       categoryTotals.tuckedCards += playerScore.scores.tuckedCards;
+      categoryTotals.nectar += playerScore.scores.nectar || 0;
     }
   }
 
@@ -307,6 +311,7 @@ export async function calculatePlayerStats(
       eggs: categoryTotals.eggs / gamesPlayed,
       cachedFood: categoryTotals.cachedFood / gamesPlayed,
       tuckedCards: categoryTotals.tuckedCards / gamesPlayed,
+      nectar: categoryTotals.nectar / gamesPlayed,
     },
   };
 }

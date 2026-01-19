@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,86 +17,50 @@ import {
 import { ArrowLeft, Calendar, Users, Trophy } from "lucide-react";
 import type { Game } from "@/types/wingspan";
 
-// Mock data - will be replaced with actual data fetching
-function getMockGame(id: string): Game | null {
-  const games: Record<string, Game> = {
-    "1": {
-      id: "1",
-      playedAt: "2024-01-15",
-      playerCount: 3,
-      uploadedBy: "user1",
-      createdAt: "2024-01-15",
-      players: [
-        {
-          id: "p1",
-          gameId: "1",
-          playerName: "Alice",
-          position: 1,
-          scores: { birds: 45, bonus: 15, endOfRound: 10, eggs: 18, cachedFood: 4, tuckedCards: 8 },
-          totalScore: 100,
-          isWinner: true,
-        },
-        {
-          id: "p2",
-          gameId: "1",
-          playerName: "Bob",
-          position: 2,
-          scores: { birds: 38, bonus: 12, endOfRound: 8, eggs: 14, cachedFood: 6, tuckedCards: 5 },
-          totalScore: 83,
-          isWinner: false,
-        },
-        {
-          id: "p3",
-          gameId: "1",
-          playerName: "Charlie",
-          position: 3,
-          scores: { birds: 40, bonus: 10, endOfRound: 9, eggs: 12, cachedFood: 3, tuckedCards: 7 },
-          totalScore: 81,
-          isWinner: false,
-        },
-      ],
-    },
-    "2": {
-      id: "2",
-      playedAt: "2024-01-14",
-      playerCount: 2,
-      uploadedBy: "user1",
-      createdAt: "2024-01-14",
-      players: [
-        {
-          id: "p4",
-          gameId: "2",
-          playerName: "Alice",
-          position: 1,
-          scores: { birds: 52, bonus: 18, endOfRound: 12, eggs: 20, cachedFood: 8, tuckedCards: 10 },
-          totalScore: 120,
-          isWinner: true,
-        },
-        {
-          id: "p5",
-          gameId: "2",
-          playerName: "Diana",
-          position: 2,
-          scores: { birds: 48, bonus: 14, endOfRound: 11, eggs: 16, cachedFood: 5, tuckedCards: 9 },
-          totalScore: 103,
-          isWinner: false,
-        },
-      ],
-    },
-  };
+export default function GamePage() {
+  const params = useParams();
+  const id = params.id as string;
 
-  return games[id] || null;
-}
+  const [game, setGame] = useState<Game | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-interface GamePageProps {
-  params: Promise<{ id: string }>;
-}
+  useEffect(() => {
+    async function fetchGame() {
+      try {
+        const response = await fetch(`/api/games/${id}`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error("Game not found");
+          }
+          throw new Error("Failed to fetch game");
+        }
+        const data = await response.json();
+        setGame(data.game);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load game");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchGame();
+  }, [id]);
 
-export default async function GamePage({ params }: GamePageProps) {
-  const { id } = await params;
-  const game = getMockGame(id);
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Link href="/games">
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Games
+          </Button>
+        </Link>
+        <p className="text-muted-foreground">Loading game...</p>
+      </div>
+    );
+  }
 
-  if (!game) {
+  if (error || !game) {
     return (
       <div className="space-y-6">
         <Link href="/games">
@@ -103,7 +71,7 @@ export default async function GamePage({ params }: GamePageProps) {
         </Link>
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">Game not found</p>
+            <p className="text-muted-foreground">{error || "Game not found"}</p>
           </CardContent>
         </Card>
       </div>
@@ -163,10 +131,11 @@ export default async function GamePage({ params }: GamePageProps) {
                 <TableHead>Player</TableHead>
                 <TableHead className="text-right">Birds</TableHead>
                 <TableHead className="text-right">Bonus</TableHead>
-                <TableHead className="text-right">End of Round</TableHead>
+                <TableHead className="text-right">Round</TableHead>
                 <TableHead className="text-right">Eggs</TableHead>
                 <TableHead className="text-right">Food</TableHead>
                 <TableHead className="text-right">Tucked</TableHead>
+                <TableHead className="text-right">Nectar</TableHead>
                 <TableHead className="text-right font-bold">Total</TableHead>
               </TableRow>
             </TableHeader>
@@ -196,6 +165,7 @@ export default async function GamePage({ params }: GamePageProps) {
                   <TableCell className="text-right">{player.scores.eggs}</TableCell>
                   <TableCell className="text-right">{player.scores.cachedFood}</TableCell>
                   <TableCell className="text-right">{player.scores.tuckedCards}</TableCell>
+                  <TableCell className="text-right">{player.scores.nectar || 0}</TableCell>
                   <TableCell className="text-right font-bold">{player.totalScore}</TableCell>
                 </TableRow>
               ))}
@@ -242,6 +212,10 @@ export default async function GamePage({ params }: GamePageProps) {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Tucked Cards</span>
                   <span className="font-medium">{player.scores.tuckedCards}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Nectar</span>
+                  <span className="font-medium">{player.scores.nectar || 0}</span>
                 </div>
                 <div className="border-t pt-2 mt-2">
                   <div className="flex justify-between font-medium">

@@ -7,6 +7,7 @@ export interface ScoreBreakdown {
   eggs: number;
   cachedFood: number;
   tuckedCards: number;
+  nectar: number;
 }
 
 export interface PlayerScore {
@@ -87,6 +88,7 @@ export interface GameFormData {
     eggs: number;
     cachedFood: number;
     tuckedCards: number;
+    nectar: number;
   }[];
 }
 

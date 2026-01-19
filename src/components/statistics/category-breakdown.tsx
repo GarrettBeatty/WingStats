@@ -25,6 +25,7 @@ const COLORS = [
   "hsl(var(--chart-4))",
   "hsl(var(--chart-5))",
   "hsl(var(--primary))",
+  "hsl(280, 70%, 50%)",
 ];
 
 const CATEGORY_LABELS: Record<keyof ScoreBreakdown, string> = {
@@ -34,6 +35,7 @@ const CATEGORY_LABELS: Record<keyof ScoreBreakdown, string> = {
   eggs: "Eggs",
   cachedFood: "Food",
   tuckedCards: "Tucked",
+  nectar: "Nectar",
 };
 
 export function CategoryBreakdown({

@@ -23,6 +23,7 @@ const playerScoreSchema = z.object({
   eggs: z.number().min(0).max(100),
   cachedFood: z.number().min(0).max(50),
   tuckedCards: z.number().min(0).max(100),
+  nectar: z.number().min(0).max(100),
 });
 
 const gameFormSchema = z.object({
@@ -45,6 +46,7 @@ const defaultPlayer = {
   eggs: 0,
   cachedFood: 0,
   tuckedCards: 0,
+  nectar: 0,
 };
 
 export function GameForm({ onSubmit, isSubmitting = false }: GameFormProps) {
@@ -72,7 +74,8 @@ export function GameForm({ onSubmit, isSubmitting = false }: GameFormProps) {
       (player.endOfRound || 0) +
       (player.eggs || 0) +
       (player.cachedFood || 0) +
-      (player.tuckedCards || 0)
+      (player.tuckedCards || 0) +
+      (player.nectar || 0)
     );
   };
 
@@ -145,7 +148,7 @@ export function GameForm({ onSubmit, isSubmitting = false }: GameFormProps) {
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
                   <FormField
                     control={form.control}
                     name={`players.${index}.birds`}
@@ -242,6 +245,24 @@ export function GameForm({ onSubmit, isSubmitting = false }: GameFormProps) {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Tucked</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            {...field}
+                            onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`players.${index}.nectar`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nectar</FormLabel>
                         <FormControl>
                           <Input
                             type="number"

@@ -2,12 +2,14 @@
 FROM python:3.11-slim
 
 # Install system dependencies for OpenCV and Tesseract
-RUN apt-get update && apt-get install -y \
+RUN apt-get update --fix-missing && \
+    apt-get install -y --no-install-recommends \
     tesseract-ocr \
     libtesseract-dev \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     git \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -16,8 +18,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install ScoreBird from GitHub
-RUN pip install git+https://github.com/Bargoff/ScoreBird.git
+# Clone ScoreBird from GitHub (not a pip package)
+RUN git clone --depth 1 https://github.com/Bargoff/ScoreBird.git /app/ScoreBird
+
+# Set PYTHONPATH to include ScoreBird root (code uses "from src.x import y")
+ENV PYTHONPATH="${PYTHONPATH}:/app/ScoreBird"
 
 # Copy application code
 COPY main.py .

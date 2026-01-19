@@ -13,9 +13,11 @@ export interface ParsedScoreData {
     eggs: number;
     cachedFood: number;
     tuckedCards: number;
+    nectar: number;
     total: number;
   }[];
   winners: string[];
+  debugImage?: string | null;
 }
 
 interface ImageUploadProps {
@@ -29,8 +31,10 @@ export function ImageUpload({
 }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [debugImage, setDebugImage] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -78,6 +82,10 @@ export function ImageUpload({
         }
 
         const parsedData = await parseResponse.json();
+        if (parsedData.debugImage) {
+          setDebugImage(parsedData.debugImage);
+          setShowDebug(true);
+        }
         onParseComplete(parsedData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to parse image");
@@ -107,6 +115,8 @@ export function ImageUpload({
 
   const handleClear = () => {
     setPreview(null);
+    setDebugImage(null);
+    setShowDebug(false);
     setError(null);
   };
 
@@ -162,10 +172,29 @@ export function ImageUpload({
       ) : (
         <Card>
           <CardContent className="p-4">
+            {debugImage && !isProcessing && (
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">View:</span>
+                <Button
+                  variant={!showDebug ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowDebug(false)}
+                >
+                  Original
+                </Button>
+                <Button
+                  variant={showDebug ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowDebug(true)}
+                >
+                  Debug (OCR Regions)
+                </Button>
+              </div>
+            )}
             <div className="relative">
               <img
-                src={preview}
-                alt="Score screenshot preview"
+                src={showDebug && debugImage ? `data:image/png;base64,${debugImage}` : preview!}
+                alt={showDebug ? "Debug view showing OCR regions" : "Score screenshot preview"}
                 className="max-h-96 w-full rounded-lg object-contain"
               />
               {isProcessing && (
@@ -179,6 +208,19 @@ export function ImageUpload({
                 </div>
               )}
             </div>
+            {showDebug && debugImage && !isProcessing && (
+              <div className="mt-3 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+                <p className="font-medium mb-1">Debug Legend:</p>
+                <ul className="grid grid-cols-2 gap-1">
+                  <li><span className="inline-block w-3 h-3 bg-red-500 mr-1"></span>Feather detection</li>
+                  <li><span className="inline-block w-3 h-3 bg-green-500 mr-1"></span>Final score digits</li>
+                  <li><span className="inline-block w-3 h-3 bg-blue-500 mr-1"></span>Detailed scores area</li>
+                  <li><span className="inline-block w-3 h-3 bg-purple-500 mr-1"></span>Player names</li>
+                  <li><span className="inline-block w-3 h-3 bg-cyan-500 mr-1"></span>Score digits (pass 1)</li>
+                  <li><span className="inline-block w-3 h-3 bg-pink-500 mr-1"></span>Score digits (pass 2)</li>
+                </ul>
+              </div>
+            )}
             {!isProcessing && (
               <div className="mt-4 flex justify-end">
                 <Button variant="outline" size="sm" onClick={handleClear}>

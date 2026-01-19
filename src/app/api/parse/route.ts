@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
         egg: number;
         end_of_round: number;
         tuck: number;
+        nectar?: number;
       };
       total: number;
     }) => ({
@@ -49,12 +50,14 @@ export async function POST(request: NextRequest) {
       eggs: player.scores.egg || 0,
       cachedFood: player.scores.cache || 0,
       tuckedCards: player.scores.tuck || 0,
+      nectar: player.scores.nectar || 0,
       total: player.total || 0,
     }));
 
     return NextResponse.json({
       players,
       winners: parsedData.winners || [],
+      debugImage: parsedData.debug_image || null,
     });
   } catch (error) {
     console.error("Error parsing image:", error);

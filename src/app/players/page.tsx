@@ -1,86 +1,119 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import type { ScoreBreakdown } from "@/types/wingspan";
 
-// Mock data - will be replaced with actual data fetching
-const mockPlayers = [
-  {
-    id: "user1",
-    username: "Alice",
-    avatarUrl: "",
-    gamesPlayed: 15,
-    winRate: 0.6,
-    averageScore: 98.5,
-  },
-  {
-    id: "user2",
-    username: "Bob",
-    avatarUrl: "",
-    gamesPlayed: 12,
-    winRate: 0.5,
-    averageScore: 92.3,
-  },
-  {
-    id: "user3",
-    username: "Charlie",
-    avatarUrl: "",
-    gamesPlayed: 18,
-    winRate: 0.44,
-    averageScore: 89.7,
-  },
-  {
-    id: "user4",
-    username: "Diana",
-    avatarUrl: "",
-    gamesPlayed: 8,
-    winRate: 0.375,
-    averageScore: 85.2,
-  },
-];
+interface PlayerStats {
+  playerName: string;
+  gamesPlayed: number;
+  totalWins: number;
+  winRate: number;
+  averageScore: number;
+  highScore: number;
+  lowScore: number;
+  categoryAverages: ScoreBreakdown;
+}
 
 export default function PlayersPage() {
+  const [players, setPlayers] = useState<PlayerStats[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchPlayers() {
+      try {
+        const response = await fetch("/api/players");
+        if (!response.ok) throw new Error("Failed to fetch players");
+        const data = await response.json();
+        setPlayers(data.players);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load players");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPlayers();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Players</h1>
+          <p className="text-muted-foreground">Loading players...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Players</h1>
+          <p className="text-red-500">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Players</h1>
         <p className="text-muted-foreground">
-          View all players and their statistics
+          {players.length > 0
+            ? "View all players and their statistics"
+            : "No players yet. Upload a game to get started!"}
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {mockPlayers.map((player) => (
-          <Link key={player.id} href={`/players/${player.id}`}>
-            <Card className="transition-colors hover:bg-accent">
-              <CardHeader className="flex flex-row items-center gap-4">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src={player.avatarUrl} alt={player.username} />
-                  <AvatarFallback>
-                    {player.username.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <CardTitle className="text-lg">{player.username}</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    {player.gamesPlayed} games played
-                  </p>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-2">
-                  <Badge variant="secondary">
-                    {(player.winRate * 100).toFixed(0)}% win rate
-                  </Badge>
-                  <Badge variant="outline">
-                    {player.averageScore.toFixed(1)} avg
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      {players.length === 0 ? (
+        <Card className="p-12 text-center">
+          <CardContent>
+            <p className="text-lg text-muted-foreground mb-4">No players recorded yet</p>
+            <Link href="/games/new">
+              <Badge className="cursor-pointer px-6 py-3 text-base">Upload Your First Score</Badge>
+            </Link>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {players.map((player) => (
+            <Link key={player.playerName} href={`/players/${encodeURIComponent(player.playerName)}`}>
+              <Card className="transition-colors hover:bg-accent">
+                <CardHeader className="flex flex-row items-center gap-4">
+                  <Avatar className="h-12 w-12">
+                    <AvatarFallback>
+                      {player.playerName.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <CardTitle className="text-lg">{player.playerName}</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      {player.gamesPlayed} games played
+                    </p>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-2">
+                    <Badge variant="secondary">
+                      {Math.round(player.winRate * 100)}% win rate
+                    </Badge>
+                    <Badge variant="outline">
+                      {Math.round(player.averageScore * 10) / 10} avg
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
