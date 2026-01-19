@@ -8,10 +8,10 @@ import asyncio
 import base64
 import json
 import os
-import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 
 import aiohttp
 import discord
@@ -262,18 +262,41 @@ async def on_message(message: discord.Message):
 
 @bot.tree.command(name="stats", description="Get stats for a player")
 @app_commands.describe(
-    player_name="Player name (Discord username or Wingspan name). Leave empty to see your own stats."
+    user="Tag a Discord user to see their stats",
+    player_name="Or type a player name (Discord username or Wingspan name)"
 )
-async def stats_command(interaction: discord.Interaction, player_name: Optional[str] = None):
+async def stats_command(
+    interaction: discord.Interaction,
+    user: Optional[discord.User] = None,
+    player_name: Optional[str] = None
+):
     await interaction.response.defer()
 
-    # Default to the user's Discord username if no name provided
-    lookup_name = player_name if player_name else interaction.user.name.lower()
+    # Determine lookup name from user mention, player_name string, or default to self
+    if user:
+        # Discord user was tagged - use their username
+        lookup_name = user.name.lower()
+    elif player_name:
+        lookup_name = player_name
+        # Strip @ prefix if someone typed it manually
+        if lookup_name.startswith("@"):
+            lookup_name = lookup_name[1:]
+        # Handle Discord mention format <@123456789>
+        if lookup_name.startswith("<@") and lookup_name.endswith(">"):
+            # Can't resolve ID to username without API call, ask user to use the user parameter
+            await interaction.followup.send(
+                "Please use the `user` parameter to tag a Discord user, "
+                "or type their username/Wingspan name directly."
+            )
+            return
+    else:
+        # Default to the command user's Discord username
+        lookup_name = interaction.user.name.lower()
 
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                f"{API_BASE_URL}/players/{lookup_name}",
+                f"{API_BASE_URL}/players/{quote(lookup_name, safe='')}",
                 timeout=aiohttp.ClientTimeout(total=30)
             ) as resp:
                 if resp.status == 404:

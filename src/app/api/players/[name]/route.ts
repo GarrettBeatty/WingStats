@@ -12,7 +12,12 @@ export async function GET(
 ) {
   try {
     const { name } = await params;
-    const decodedName = decodeURIComponent(name);
+    let decodedName = decodeURIComponent(name);
+
+    // Strip @ prefix if present (common when users type @username)
+    if (decodedName.startsWith("@")) {
+      decodedName = decodedName.slice(1);
+    }
 
     // Resolve identity to handle both Discord usernames and Wingspan names
     const identity = resolvePlayerIdentity(decodedName);
