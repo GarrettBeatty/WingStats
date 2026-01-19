@@ -31,11 +31,13 @@ const gameFormSchema = z.object({
   players: z.array(playerScoreSchema).min(1).max(5),
 });
 
-type GameFormValues = z.infer<typeof gameFormSchema>;
+export type GameFormValues = z.infer<typeof gameFormSchema>;
 
 interface GameFormProps {
   onSubmit: (data: GameFormValues) => Promise<void>;
   isSubmitting?: boolean;
+  initialValues?: GameFormValues;
+  submitButtonText?: string;
 }
 
 const defaultPlayer = {
@@ -49,10 +51,15 @@ const defaultPlayer = {
   nectar: 0,
 };
 
-export function GameForm({ onSubmit, isSubmitting = false }: GameFormProps) {
+export function GameForm({
+  onSubmit,
+  isSubmitting = false,
+  initialValues,
+  submitButtonText = "Save Game",
+}: GameFormProps) {
   const form = useForm<GameFormValues>({
     resolver: zodResolver(gameFormSchema),
-    defaultValues: {
+    defaultValues: initialValues ?? {
       playedAt: new Date().toISOString().split("T")[0],
       players: [{ ...defaultPlayer }, { ...defaultPlayer }],
     },
@@ -282,7 +289,7 @@ export function GameForm({ onSubmit, isSubmitting = false }: GameFormProps) {
         </div>
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : "Save Game"}
+          {isSubmitting ? "Saving..." : submitButtonText}
         </Button>
       </form>
     </Form>

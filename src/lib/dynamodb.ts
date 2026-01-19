@@ -359,3 +359,175 @@ export async function getLeaderboard(): Promise<PlayerStats[]> {
   // Sort by average score descending
   return stats.sort((a, b) => b.averageScore - a.averageScore);
 }
+
+// ============================================
+// Game Update/Delete Operations
+// ============================================
+
+interface UpdateGameInput {
+  playedAt: string;
+  players: {
+    name: string;
+    birds: number;
+    bonus: number;
+    endOfRound: number;
+    eggs: number;
+    cachedFood: number;
+    tuckedCards: number;
+    nectar: number;
+  }[];
+}
+
+export async function updateGame(
+  gameId: string,
+  input: UpdateGameInput
+): Promise<Game | null> {
+  // First check if the game exists
+  const existingGame = await getGame(gameId);
+  if (!existingGame) {
+    return null;
+  }
+
+  // Delete existing PLAYER# items (player count may change)
+  const playersResult = await docClient.send(
+    new QueryCommand({
+      TableName: GAMES_TABLE,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+      ExpressionAttributeValues: {
+        ":pk": `GAME#${gameId}`,
+        ":sk": "PLAYER#",
+      },
+    })
+  );
+
+  for (const item of playersResult.Items || []) {
+    await docClient.send(
+      new DeleteCommand({
+        TableName: GAMES_TABLE,
+        Key: {
+          PK: item.PK,
+          SK: item.SK,
+        },
+      })
+    );
+  }
+
+  // Calculate totals and determine winner
+  const playersWithScores = input.players.map((player, index) => {
+    const scores: ScoreBreakdown = {
+      birds: player.birds,
+      bonus: player.bonus,
+      endOfRound: player.endOfRound,
+      eggs: player.eggs,
+      cachedFood: player.cachedFood,
+      tuckedCards: player.tuckedCards,
+      nectar: player.nectar,
+    };
+    const totalScore = Object.values(scores).reduce((sum, val) => sum + val, 0);
+    return {
+      ...player,
+      scores,
+      totalScore,
+      position: index + 1,
+    };
+  });
+
+  const maxScore = Math.max(...playersWithScores.map((p) => p.totalScore));
+
+  // Update game metadata
+  await docClient.send(
+    new UpdateCommand({
+      TableName: GAMES_TABLE,
+      Key: {
+        PK: `GAME#${gameId}`,
+        SK: "METADATA",
+      },
+      UpdateExpression:
+        "SET playedAt = :playedAt, playerCount = :playerCount, winningScore = :winningScore",
+      ExpressionAttributeValues: {
+        ":playedAt": input.playedAt,
+        ":playerCount": input.players.length,
+        ":winningScore": maxScore,
+      },
+    })
+  );
+
+  // Create new PLAYER# items
+  const playerScores: PlayerScore[] = [];
+  for (const player of playersWithScores) {
+    const playerId = uuidv4();
+    const isWinner = player.totalScore === maxScore;
+
+    await docClient.send(
+      new PutCommand({
+        TableName: GAMES_TABLE,
+        Item: {
+          PK: `GAME#${gameId}`,
+          SK: `PLAYER#${player.position}`,
+          playerId,
+          gameId,
+          playerName: player.name,
+          position: player.position,
+          scores: player.scores,
+          totalScore: player.totalScore,
+          isWinner,
+          playedAt: input.playedAt,
+        },
+      })
+    );
+
+    playerScores.push({
+      id: playerId,
+      gameId,
+      playerName: player.name,
+      position: player.position,
+      scores: player.scores,
+      totalScore: player.totalScore,
+      isWinner,
+    });
+  }
+
+  return {
+    id: gameId,
+    playedAt: input.playedAt,
+    playerCount: input.players.length,
+    uploadedBy: existingGame.uploadedBy,
+    imageUrl: existingGame.imageUrl,
+    createdAt: existingGame.createdAt,
+    players: playerScores,
+  };
+}
+
+export async function deleteGame(gameId: string): Promise<boolean> {
+  // First check if the game exists
+  const existingGame = await getGame(gameId);
+  if (!existingGame) {
+    return false;
+  }
+
+  // Query all items with PK = GAME#{gameId}
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: GAMES_TABLE,
+      KeyConditionExpression: "PK = :pk",
+      ExpressionAttributeValues: {
+        ":pk": `GAME#${gameId}`,
+      },
+    })
+  );
+
+  // Delete all items (metadata and player items)
+  for (const item of result.Items || []) {
+    await docClient.send(
+      new DeleteCommand({
+        TableName: GAMES_TABLE,
+        Key: {
+          PK: item.PK,
+          SK: item.SK,
+        },
+      })
+    );
+  }
+
+  return true;
+}
