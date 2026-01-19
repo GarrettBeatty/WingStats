@@ -16,8 +16,12 @@ permissions:
   contents: read
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-24.04-arm
+    outputs:
+      image: ${{ steps.build-image.outputs.image }}
+      scorebird_image: ${{ steps.build-image.outputs.scorebird_image }}
+      registry: ${{ steps.login-ecr.outputs.registry }}
 
     steps:
       - name: Checkout code
@@ -69,12 +73,17 @@ jobs:
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "scorebird_image=$ECR_REGISTRY/$ECR_SCOREBIRD_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         env:
-          ECR_IMAGE: ${{ steps.build-image.outputs.image }}
-          ECR_SCOREBIRD_IMAGE: ${{ steps.build-image.outputs.scorebird_image }}
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_IMAGE: ${{ needs.build.outputs.image }}
+          ECR_SCOREBIRD_IMAGE: ${{ needs.build.outputs.scorebird_image }}
+          ECR_REGISTRY: ${{ needs.build.outputs.registry }}
           AWS_REGION: ${{ env.AWS_REGION }}
           DOMAIN: ${{ secrets.DOMAIN }}
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
