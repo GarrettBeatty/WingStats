@@ -113,13 +113,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Copy players.json to EC2
+      - name: Copy config files to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "scorebird-service/players.json"
+          source: "scorebird-service/players.json,deploy/docker-compose.yml,deploy/Caddyfile"
           target: "~/wingstats/"
           strip_components: 1
 

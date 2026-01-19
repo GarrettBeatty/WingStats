@@ -8,3 +8,9 @@
         Referrer-Policy strict-origin-when-cross-origin
     }
 }
+
+# Allow access via IP address (HTTP only, no TLS)
+:80 {
+    reverse_proxy app:3000
+    encode gzip
+}
