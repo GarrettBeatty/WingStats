@@ -15,6 +15,7 @@ export interface PlayerScore {
   gameId: string;
   playerId?: string; // linked user ID (optional)
   playerName: string;
+  discordUsername?: string; // Discord username if registered
   position: number; // 1-5 for player order
   scores: ScoreBreakdown;
   totalScore: number;
@@ -42,6 +43,8 @@ export interface User {
 export interface PlayerStats {
   userId: string;
   username: string;
+  discordUsername?: string;
+  aliases?: string[]; // Wingspan names if Discord user
   avatarUrl?: string;
   gamesPlayed: number;
   totalWins: number;
@@ -59,6 +62,8 @@ export interface LeaderboardEntry {
   rank: number;
   userId: string;
   username: string;
+  discordUsername?: string;
+  aliases?: string[];
   avatarUrl?: string;
   gamesPlayed: number;
   winRate: number;

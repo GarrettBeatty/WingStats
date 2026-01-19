@@ -15,6 +15,8 @@ import {
 interface LeaderboardEntry {
   rank: number;
   playerName: string;
+  discordUsername?: string;
+  aliases?: string[];
   gamesPlayed: number;
   winRate: number;
   averageScore: number;
@@ -58,31 +60,44 @@ export function LeaderboardTable({ entries }: LeaderboardTableProps) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {entries.map((entry) => (
-          <TableRow key={entry.playerName}>
-            <TableCell>{getRankBadge(entry.rank)}</TableCell>
-            <TableCell>
-              <Link
-                href={`/players/${encodeURIComponent(entry.playerName)}`}
-                className="flex items-center gap-2 hover:underline"
-              >
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback>
-                    {entry.playerName.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="font-medium">{entry.playerName}</span>
-              </Link>
-            </TableCell>
-            <TableCell className="text-right">{entry.gamesPlayed}</TableCell>
-            <TableCell className="text-right">
-              {(entry.winRate * 100).toFixed(1)}%
-            </TableCell>
-            <TableCell className="text-right font-mono">
-              {entry.averageScore.toFixed(1)}
-            </TableCell>
-          </TableRow>
-        ))}
+        {entries.map((entry) => {
+          // Use Discord username as display name if registered
+          const displayName = entry.discordUsername || entry.playerName;
+          const hasAliases = entry.aliases && entry.aliases.length > 1;
+
+          return (
+            <TableRow key={displayName}>
+              <TableCell>{getRankBadge(entry.rank)}</TableCell>
+              <TableCell>
+                <Link
+                  href={`/players/${encodeURIComponent(displayName)}`}
+                  className="flex items-center gap-2 hover:underline"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>
+                      {displayName.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{displayName}</span>
+                    {hasAliases && (
+                      <span className="text-xs text-muted-foreground">
+                        {entry.aliases!.length} accounts
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              </TableCell>
+              <TableCell className="text-right">{entry.gamesPlayed}</TableCell>
+              <TableCell className="text-right">
+                {(entry.winRate * 100).toFixed(1)}%
+              </TableCell>
+              <TableCell className="text-right font-mono">
+                {entry.averageScore.toFixed(1)}
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );

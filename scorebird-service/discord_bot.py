@@ -261,34 +261,59 @@ async def on_message(message: discord.Message):
 # Slash Commands
 
 @bot.tree.command(name="stats", description="Get stats for a player")
-@app_commands.describe(player_name="The player's Wingspan name")
-async def stats_command(interaction: discord.Interaction, player_name: str):
+@app_commands.describe(
+    player_name="Player name (Discord username or Wingspan name). Leave empty to see your own stats."
+)
+async def stats_command(interaction: discord.Interaction, player_name: Optional[str] = None):
     await interaction.response.defer()
+
+    # Default to the user's Discord username if no name provided
+    lookup_name = player_name if player_name else interaction.user.name.lower()
 
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                f"{API_BASE_URL}/players/{player_name}",
+                f"{API_BASE_URL}/players/{lookup_name}",
                 timeout=aiohttp.ClientTimeout(total=30)
             ) as resp:
                 if resp.status == 404:
-                    await interaction.followup.send(f"Player '{player_name}' not found.")
+                    if player_name:
+                        await interaction.followup.send(f"Player '{player_name}' not found.")
+                    else:
+                        await interaction.followup.send(
+                            "No stats found for your Discord account. "
+                            "Use `/register <wingspan_name>` to link your Wingspan name."
+                        )
                     return
                 if resp.status != 200:
                     await interaction.followup.send("Failed to fetch player stats.")
                     return
                 data = await resp.json()
 
-        player = data.get("player", {})
-        stats = player.get("stats", {})
+        stats = data.get("stats", {})
+        identity = data.get("identity", {})
+
+        # Use Discord username if registered, otherwise the player name
+        display_name = identity.get("discordUsername") or stats.get("playerName", lookup_name)
+        aliases = identity.get("wingspanNames", [])
 
         embed = discord.Embed(
-            title=f"Stats for {player_name}",
+            title=f"Stats for {display_name}",
             color=discord.Color.blue()
         )
+
+        # Show aliases if registered with multiple names
+        if len(aliases) > 1:
+            embed.description = f"*Accounts: {', '.join(aliases)}*"
+
         embed.add_field(name="Games Played", value=stats.get("gamesPlayed", 0), inline=True)
         embed.add_field(name="Wins", value=stats.get("totalWins", 0), inline=True)
-        embed.add_field(name="Win Rate", value=f"{stats.get('winRate', 0):.1f}%", inline=True)
+
+        win_rate = stats.get("winRate", 0)
+        # winRate comes as a decimal (0.0-1.0), convert to percentage
+        win_rate_pct = win_rate * 100 if win_rate <= 1 else win_rate
+        embed.add_field(name="Win Rate", value=f"{win_rate_pct:.1f}%", inline=True)
+
         embed.add_field(name="Avg Score", value=f"{stats.get('averageScore', 0):.1f}", inline=True)
         embed.add_field(name="High Score", value=stats.get("highScore", 0), inline=True)
         embed.add_field(name="Low Score", value=stats.get("lowScore", 0), inline=True)
@@ -336,12 +361,22 @@ async def leaderboard_command(interaction: discord.Interaction):
             elif i == 3:
                 medal = ":third_place: "
 
-            stats = player.get("stats", {})
+            # Handle new format: player stats are at top level, not nested in 'stats'
+            # Use Discord username if available, otherwise playerName
+            display_name = player.get("discordUsername") or player.get("playerName", "Unknown")
+            avg_score = player.get("averageScore", 0)
+            games_played = player.get("gamesPlayed", 0)
+            total_wins = player.get("totalWins", 0)
+            aliases = player.get("aliases", [])
+
+            # Show account count if multiple
+            account_info = f" ({len(aliases)} accounts)" if len(aliases) > 1 else ""
+
             leaderboard_text.append(
-                f"{medal}**{i}. {player.get('name', 'Unknown')}** - "
-                f"Avg: {stats.get('averageScore', 0):.1f} | "
-                f"Games: {stats.get('gamesPlayed', 0)} | "
-                f"Wins: {stats.get('totalWins', 0)}"
+                f"{medal}**{i}. {display_name}**{account_info} - "
+                f"Avg: {avg_score:.1f} | "
+                f"Games: {games_played} | "
+                f"Wins: {total_wins}"
             )
 
         embed.description = "\n".join(leaderboard_text)

@@ -9,6 +9,12 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import type { Game, PlayerScore, ScoreBreakdown } from "@/types/wingspan";
+import {
+  getDiscordUsername,
+  getWingspanNames,
+  getAllDiscordUsers,
+  resolvePlayerIdentity,
+} from "./playerMappings";
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({
@@ -91,6 +97,7 @@ export async function createGame(input: CreateGameInput): Promise<Game> {
   for (const player of playersWithScores) {
     const playerId = uuidv4();
     const isWinner = player.totalScore === maxScore;
+    const discordUsername = getDiscordUsername(player.name);
 
     await docClient.send(
       new PutCommand({
@@ -101,6 +108,7 @@ export async function createGame(input: CreateGameInput): Promise<Game> {
           playerId,
           gameId,
           playerName: player.name,
+          discordUsername: discordUsername || undefined,
           position: player.position,
           scores: player.scores,
           totalScore: player.totalScore,
@@ -114,6 +122,7 @@ export async function createGame(input: CreateGameInput): Promise<Game> {
       id: playerId,
       gameId,
       playerName: player.name,
+      discordUsername: discordUsername || undefined,
       position: player.position,
       scores: player.scores,
       totalScore: player.totalScore,
@@ -164,6 +173,7 @@ export async function getGame(gameId: string): Promise<Game | null> {
     id: item.playerId,
     gameId: item.gameId,
     playerName: item.playerName,
+    discordUsername: item.discordUsername,
     position: item.position,
     scores: item.scores,
     totalScore: item.totalScore,
@@ -243,6 +253,8 @@ export async function getGamesByPlayer(
 
 export interface PlayerStats {
   playerName: string;
+  discordUsername?: string;
+  aliases?: string[];
   gamesPlayed: number;
   totalWins: number;
   winRate: number;
@@ -315,6 +327,152 @@ export async function calculatePlayerStats(
   };
 }
 
+/**
+ * Get all games for a Discord user (across all their registered Wingspan names)
+ */
+export async function getGamesByDiscordUser(
+  discordUsername: string,
+  limit: number = 50
+): Promise<Game[]> {
+  const wingspanNames = getWingspanNames(discordUsername);
+  if (wingspanNames.length === 0) {
+    return [];
+  }
+
+  // Fetch games for all Wingspan names
+  const allGames: Game[] = [];
+  const seenGameIds = new Set<string>();
+
+  for (const name of wingspanNames) {
+    const games = await getGamesByPlayer(name, limit);
+    for (const game of games) {
+      if (!seenGameIds.has(game.id)) {
+        seenGameIds.add(game.id);
+        allGames.push(game);
+      }
+    }
+  }
+
+  // Sort by playedAt descending
+  allGames.sort(
+    (a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime()
+  );
+
+  return allGames.slice(0, limit);
+}
+
+/**
+ * Calculate aggregated stats for a Discord user across all their Wingspan names
+ */
+export async function calculateDiscordUserStats(
+  discordUsername: string
+): Promise<PlayerStats | null> {
+  const wingspanNames = getWingspanNames(discordUsername);
+  if (wingspanNames.length === 0) {
+    return null;
+  }
+
+  const games = await getGamesByDiscordUser(discordUsername);
+
+  if (games.length === 0) {
+    return null;
+  }
+
+  let totalScore = 0;
+  let totalWins = 0;
+  let highScore = 0;
+  let lowScore = Infinity;
+  const categoryTotals: ScoreBreakdown = {
+    birds: 0,
+    bonus: 0,
+    endOfRound: 0,
+    eggs: 0,
+    cachedFood: 0,
+    tuckedCards: 0,
+    nectar: 0,
+  };
+
+  // Convert to lowercase set for matching
+  const wingspanNamesLower = new Set(wingspanNames.map((n) => n.toLowerCase()));
+
+  for (const game of games) {
+    // Find the player's score (could be under any of their Wingspan names)
+    const playerScore = game.players.find((p) =>
+      wingspanNamesLower.has(p.playerName.toLowerCase())
+    );
+    if (playerScore) {
+      totalScore += playerScore.totalScore;
+      if (playerScore.isWinner) totalWins++;
+      if (playerScore.totalScore > highScore) highScore = playerScore.totalScore;
+      if (playerScore.totalScore < lowScore) lowScore = playerScore.totalScore;
+
+      categoryTotals.birds += playerScore.scores.birds;
+      categoryTotals.bonus += playerScore.scores.bonus;
+      categoryTotals.endOfRound += playerScore.scores.endOfRound;
+      categoryTotals.eggs += playerScore.scores.eggs;
+      categoryTotals.cachedFood += playerScore.scores.cachedFood;
+      categoryTotals.tuckedCards += playerScore.scores.tuckedCards;
+      categoryTotals.nectar += playerScore.scores.nectar || 0;
+    }
+  }
+
+  const gamesPlayed = games.length;
+
+  return {
+    playerName: discordUsername,
+    discordUsername,
+    aliases: wingspanNames,
+    gamesPlayed,
+    totalWins,
+    winRate: totalWins / gamesPlayed,
+    averageScore: totalScore / gamesPlayed,
+    highScore,
+    lowScore: lowScore === Infinity ? 0 : lowScore,
+    categoryAverages: {
+      birds: categoryTotals.birds / gamesPlayed,
+      bonus: categoryTotals.bonus / gamesPlayed,
+      endOfRound: categoryTotals.endOfRound / gamesPlayed,
+      eggs: categoryTotals.eggs / gamesPlayed,
+      cachedFood: categoryTotals.cachedFood / gamesPlayed,
+      tuckedCards: categoryTotals.tuckedCards / gamesPlayed,
+      nectar: categoryTotals.nectar / gamesPlayed,
+    },
+  };
+}
+
+/**
+ * Calculate stats for a player, automatically using Discord aggregation if registered
+ */
+export async function calculatePlayerStatsAggregated(
+  name: string
+): Promise<PlayerStats | null> {
+  const identity = resolvePlayerIdentity(name);
+
+  if (identity.isRegistered && identity.discordUsername) {
+    return calculateDiscordUserStats(identity.discordUsername);
+  }
+
+  // Not registered - use original function
+  return calculatePlayerStats(name);
+}
+
+/**
+ * Get games for a player, automatically using Discord aggregation if registered
+ */
+export async function getGamesByPlayerAggregated(
+  name: string,
+  limit: number = 50
+): Promise<Game[]> {
+  const identity = resolvePlayerIdentity(name);
+
+  if (identity.isRegistered && identity.discordUsername) {
+    return getGamesByDiscordUser(identity.discordUsername, limit);
+  }
+
+  // Not registered - use original function
+  return getGamesByPlayer(name, limit);
+}
+
 // ============================================
 // Leaderboard Operations
 // ============================================
@@ -349,10 +507,36 @@ export async function getLeaderboard(): Promise<PlayerStats[]> {
   const playerNames = await getAllPlayerNames();
   const stats: PlayerStats[] = [];
 
+  // Track which Discord users we've already processed
+  const processedDiscordUsers = new Set<string>();
+  // Track which standalone Wingspan names we've processed
+  const processedWingspanNames = new Set<string>();
+
   for (const name of playerNames) {
-    const playerStats = await calculatePlayerStats(name);
-    if (playerStats && playerStats.gamesPlayed >= 1) {
-      stats.push(playerStats);
+    const identity = resolvePlayerIdentity(name);
+
+    if (identity.isRegistered && identity.discordUsername) {
+      // This is a registered Discord user
+      if (processedDiscordUsers.has(identity.discordUsername)) {
+        continue; // Already processed
+      }
+      processedDiscordUsers.add(identity.discordUsername);
+
+      const playerStats = await calculateDiscordUserStats(identity.discordUsername);
+      if (playerStats && playerStats.gamesPlayed >= 1) {
+        stats.push(playerStats);
+      }
+    } else {
+      // Unregistered Wingspan name - show as individual
+      if (processedWingspanNames.has(name.toLowerCase())) {
+        continue;
+      }
+      processedWingspanNames.add(name.toLowerCase());
+
+      const playerStats = await calculatePlayerStats(name);
+      if (playerStats && playerStats.gamesPlayed >= 1) {
+        stats.push(playerStats);
+      }
     }
   }
 
@@ -457,6 +641,7 @@ export async function updateGame(
   for (const player of playersWithScores) {
     const playerId = uuidv4();
     const isWinner = player.totalScore === maxScore;
+    const discordUsername = getDiscordUsername(player.name);
 
     await docClient.send(
       new PutCommand({
@@ -467,6 +652,7 @@ export async function updateGame(
           playerId,
           gameId,
           playerName: player.name,
+          discordUsername: discordUsername || undefined,
           position: player.position,
           scores: player.scores,
           totalScore: player.totalScore,
@@ -480,6 +666,7 @@ export async function updateGame(
       id: playerId,
       gameId,
       playerName: player.name,
+      discordUsername: discordUsername || undefined,
       position: player.position,
       scores: player.scores,
       totalScore: player.totalScore,

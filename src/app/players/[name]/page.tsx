@@ -14,6 +14,8 @@ import type { Game, ScoreBreakdown } from "@/types/wingspan";
 
 interface PlayerStats {
   playerName: string;
+  discordUsername?: string;
+  aliases?: string[];
   gamesPlayed: number;
   totalWins: number;
   winRate: number;
@@ -23,9 +25,16 @@ interface PlayerStats {
   categoryAverages: ScoreBreakdown;
 }
 
+interface PlayerIdentity {
+  isRegistered: boolean;
+  discordUsername: string | null;
+  wingspanNames: string[];
+}
+
 interface PlayerData {
   stats: PlayerStats;
   recentGames: Game[];
+  identity?: PlayerIdentity;
 }
 
 export default function PlayerPage() {
@@ -87,14 +96,24 @@ export default function PlayerPage() {
     );
   }
 
-  const { stats, recentGames } = data;
+  const { stats, recentGames, identity } = data;
+
+  // Get all names to search for (aliases if registered, otherwise just the player name)
+  const playerNames = identity?.wingspanNames.length
+    ? new Set(identity.wingspanNames.map((n) => n.toLowerCase()))
+    : new Set([stats.playerName.toLowerCase()]);
+
+  // Helper to find player score in a game (handles aliases)
+  const findPlayerScore = (game: Game) => {
+    return game.players.find((p) => playerNames.has(p.playerName.toLowerCase()));
+  };
 
   // Build trend data from recent games
   const trendData = recentGames
     .slice()
     .reverse()
     .map((game, index) => {
-      const playerScore = game.players.find(p => p.playerName === stats.playerName);
+      const playerScore = findPlayerScore(game);
       return {
         game: index + 1,
         score: playerScore?.totalScore || 0,
@@ -102,27 +121,37 @@ export default function PlayerPage() {
     });
 
   // Calculate standard deviation
-  const scores = recentGames.map(game => {
-    const playerScore = game.players.find(p => p.playerName === stats.playerName);
+  const scores = recentGames.map((game) => {
+    const playerScore = findPlayerScore(game);
     return playerScore?.totalScore || 0;
   });
   const mean = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-  const variance = scores.length > 0
-    ? scores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / scores.length
-    : 0;
+  const variance =
+    scores.length > 0
+      ? scores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / scores.length
+      : 0;
   const stdDev = Math.sqrt(variance);
+
+  // Display name and aliases
+  const displayName = identity?.discordUsername || stats.playerName;
+  const aliases = identity?.isRegistered ? identity.wingspanNames : undefined;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Avatar className="h-16 w-16">
           <AvatarFallback className="text-xl">
-            {stats.playerName.slice(0, 2).toUpperCase()}
+            {displayName.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{stats.playerName}</h1>
-          <div className="flex gap-2">
+          <h1 className="text-3xl font-bold tracking-tight">{displayName}</h1>
+          {aliases && aliases.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Also known as: {aliases.join(", ")}
+            </p>
+          )}
+          <div className="flex gap-2 mt-1">
             <Badge>{stats.gamesPlayed} games</Badge>
             <Badge variant="secondary">
               {Math.round(stats.winRate * 100)}% win rate
