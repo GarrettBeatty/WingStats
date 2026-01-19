@@ -59,17 +59,35 @@ docker compose down            # Stop all services
 docker compose build --no-cache  # Rebuild from scratch
 ```
 
-## AWS Deployment
+## AWS Infrastructure
 
-All AWS infrastructure is managed via CDK in the `/infra` directory. This creates:
+All AWS infrastructure is managed via CDK in the `/infra` directory.
 
-- **DynamoDB** - Games table with GSIs
-- **ECR** - Container repositories for app and scorebird
-- **VPC** - Public subnet configuration
-- **EC2** - t3.small instance with Docker pre-installed
-- **Elastic IP** - Static IP for DNS
-- **Security Group** - Ports 22, 80, 443
-- **IAM** - Roles and users for EC2 and GitHub Actions
+### Resources Created
+
+| Resource | Description |
+|----------|-------------|
+| **DynamoDB Table** | `wingstats-games` - Games and player scores with GSIs |
+| **ECR Repositories** | `wingstats` and `wingstats-scorebird` container registries |
+| **VPC** | Custom VPC with public subnets (no NAT gateway) |
+| **EC2 Instance** | `t4g.nano` ARM64 instance with Docker pre-installed |
+| **Elastic IP** | Static IP for DNS |
+| **Security Group** | Allows ports 22 (SSH), 80 (HTTP), 443 (HTTPS) |
+| **IAM Role** | `wingstats-ec2-role` - EC2 access to ECR and DynamoDB |
+| **IAM Users** | `wingstats-deploy` (CI/CD), `wingstats-dev` (local dev) |
+
+### Cost Estimate
+
+| Resource | Monthly Cost |
+|----------|-------------|
+| EC2 t4g.nano | ~$3.00 |
+| EBS 8GB GP3 | ~$0.64 |
+| Elastic IP | Free (while attached) |
+| DynamoDB | ~$0 (pay per request) |
+| ECR | ~$0.10 (storage) |
+| **Total** | **~$4/month** |
+
+## Deployment
 
 ### 1. Prerequisites
 
@@ -83,25 +101,25 @@ All AWS infrastructure is managed via CDK in the `/infra` directory. This create
    aws configure
    ```
 
-3. Create an EC2 Key Pair in the AWS Console:
-   - Go to EC2 > Key Pairs > Create Key Pair
-   - Name it (e.g., `wingstats-key`)
-   - Download the `.pem` file and save it to `~/.ssh/`
-   - Set permissions: `chmod 400 ~/.ssh/wingstats-key.pem`
-
 ### 2. Deploy Infrastructure
 
 ```bash
 cd infra
 npm install
 
-# Deploy with your key pair name and domain
+# Deploy (key pair is optional)
+npx cdk deploy
+
+# Or with domain name for output hints
+npx cdk deploy -c domainName=wingstats.beatty.codes
+
+# Or with SSH key pair (create in EC2 > Key Pairs first)
 npx cdk deploy -c keyPairName=wingstats-key -c domainName=wingstats.beatty.codes
 ```
 
 CDK will output:
 - `InstancePublicIP` - Use this for your DNS A record
-- `SSHCommand` - Command to SSH into the instance
+- `SSMCommand` or `SSHCommand` - Command to connect to the instance
 - `AppRepositoryUri` - ECR URI for the app image
 - `ScorebirdRepositoryUri` - ECR URI for scorebird image
 - `DeployUserName` - IAM user for GitHub Actions
@@ -110,42 +128,41 @@ CDK will output:
 
 Point your domain's A record to the `InstancePublicIP` from the CDK output.
 
-### 4. Create IAM Access Keys
-
-Create access keys for the `wingstats-deploy` user:
-
-```bash
-aws iam create-access-key --user-name wingstats-deploy
-```
-
-Save the `AccessKeyId` and `SecretAccessKey` for GitHub secrets.
-
-### 5. Configure GitHub Secrets
+### 4. Configure GitHub Secrets
 
 Add these secrets to your GitHub repository (Settings > Secrets and variables > Actions):
 
-| Secret | Description | Source |
-|--------|-------------|--------|
-| `AWS_ACCESS_KEY_ID` | Deploy user access key | Step 4 output |
-| `AWS_SECRET_ACCESS_KEY` | Deploy user secret key | Step 4 output |
-| `EC2_HOST` | EC2 Elastic IP | CDK `InstancePublicIP` output |
-| `EC2_USER` | SSH username | `ec2-user` |
-| `EC2_SSH_KEY` | Private SSH key contents | Contents of `~/.ssh/wingstats-key.pem` |
-| `DOMAIN` | Your domain name | `wingstats.beatty.codes` |
-| `DISCORD_BOT_TOKEN` | Discord bot token | Discord Developer Portal |
+| Secret | Description |
+|--------|-------------|
+| `AWS_ROLE_ARN` | `GitHubActionsRoleArn` from CDK output |
+| `EC2_HOST` | EC2 Elastic IP |
+| `EC2_USER` | `ec2-user` |
+| `EC2_SSH_KEY` | Private SSH key contents (for deployment) |
+| `DOMAIN` | Your domain name (e.g., `wingstats.beatty.codes`) |
+| `DISCORD_BOT_TOKEN` | Discord bot token |
 
-### 6. First Deployment
+**Note:** We use OIDC for AWS authentication - no access keys needed. GitHub Actions assumes the IAM role directly.
 
-The EC2 instance is pre-configured with Docker, docker-compose, and all config files. For the first deploy:
+### 5. Connect to Instance
 
-1. SSH into the instance:
-   ```bash
-   ssh -i ~/.ssh/wingstats-key.pem ec2-user@<instance-ip>
-   ```
+**With SSM Session Manager (no key pair needed):**
+```bash
+aws ssm start-session --target <instance-id>
+```
 
-2. The GitHub Actions workflow will handle subsequent deployments automatically when you push to `main`.
+**With SSH (if key pair configured):**
+```bash
+ssh -i ~/.ssh/wingstats-key.pem ec2-user@<instance-ip>
+```
 
-### Production Architecture
+### 6. CI/CD
+
+GitHub Actions automatically builds and deploys on push to `main`:
+- Builds ARM64 Docker images using native ARM64 runners
+- Pushes to ECR
+- Deploys to EC2 via SSH
+
+## Production Architecture
 
 ```
 Internet
@@ -167,19 +184,21 @@ Internet
 └──────────┘
 ```
 
-### CDK Commands
+All services run as Docker containers on a single `t4g.nano` ARM64 instance.
+
+## CDK Commands
 
 ```bash
 cd infra
 
 # Preview changes
-npx cdk diff -c keyPairName=wingstats-key
+npx cdk diff
 
 # Deploy
-npx cdk deploy -c keyPairName=wingstats-key -c domainName=wingstats.beatty.codes
+npx cdk deploy
 
 # Destroy all resources (careful!)
-npx cdk destroy -c keyPairName=wingstats-key
+npx cdk destroy
 ```
 
 ## Discord Bot Commands
@@ -190,15 +209,3 @@ npx cdk destroy -c keyPairName=wingstats-key
 - `/recent [count]` - Show recent games
 - `/register <name>` - Register your Discord username to a Wingspan name
 - `/mynames` - Show your registered Wingspan names
-
-## Cost Estimates
-
-Monthly AWS costs (us-east-1):
-
-| Resource | Estimated Cost |
-|----------|---------------|
-| EC2 t3.small | ~$15/month |
-| Elastic IP | Free (when attached) |
-| DynamoDB | ~$0 (pay per request) |
-| ECR | ~$1 (storage) |
-| **Total** | **~$16/month** |

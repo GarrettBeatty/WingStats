@@ -343,19 +343,41 @@ export class InfraStack extends cdk.Stack {
     });
 
     // ============================================
-    // IAM User for GitHub Actions
+    // GitHub Actions OIDC Provider and Role
     // ============================================
 
-    const deployUser = new iam.User(this, 'DeployUser', {
-      userName: 'wingstats-deploy',
+    // Use existing GitHub OIDC provider (only one per account)
+    const githubProviderArn = `arn:aws:iam::${this.account}:oidc-provider/token.actions.githubusercontent.com`;
+    const githubProvider = iam.OpenIdConnectProvider.fromOpenIdConnectProviderArn(
+      this,
+      'GitHubOIDCProvider',
+      githubProviderArn
+    );
+
+    // IAM role that GitHub Actions will assume
+    const githubActionsRole = new iam.Role(this, 'GitHubActionsRole', {
+      roleName: 'wingstats-github-actions',
+      assumedBy: new iam.WebIdentityPrincipal(
+        githubProvider.openIdConnectProviderArn,
+        {
+          StringEquals: {
+            'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+          },
+          StringLike: {
+            // Only allow the WingStats repo
+            'token.actions.githubusercontent.com:sub': 'repo:GarrettBeatty/WingStats:*',
+          },
+        }
+      ),
+      description: 'IAM role for GitHub Actions deployments via OIDC',
     });
 
     // Grant ECR push access
-    this.appRepository.grantPullPush(deployUser);
-    this.scorebirdRepository.grantPullPush(deployUser);
+    this.appRepository.grantPullPush(githubActionsRole);
+    this.scorebirdRepository.grantPullPush(githubActionsRole);
 
     // Grant ECR authorization token
-    deployUser.addToPolicy(new iam.PolicyStatement({
+    githubActionsRole.addToPolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: ['ecr:GetAuthorizationToken'],
       resources: ['*'],
@@ -413,9 +435,9 @@ export class InfraStack extends cdk.Stack {
       });
     }
 
-    new cdk.CfnOutput(this, 'DeployUserName', {
-      value: deployUser.userName,
-      description: 'IAM user for GitHub Actions deployments',
+    new cdk.CfnOutput(this, 'GitHubActionsRoleArn', {
+      value: githubActionsRole.roleArn,
+      description: 'IAM role ARN for GitHub Actions OIDC',
     });
 
     new cdk.CfnOutput(this, 'Region', {
