@@ -198,13 +198,14 @@ async def on_message(message: discord.Message):
                 scores = player.get("scores", {})
                 api_players.append({
                     "name": player["name"],
-                    "birds": scores.get("bird_points", 0),
-                    "bonus": scores.get("bonus", 0),
-                    "endOfRound": scores.get("end_of_round", 0),
-                    "eggs": scores.get("egg", 0),
-                    "cachedFood": scores.get("cache", 0),
-                    "tuckedCards": scores.get("tuck", 0),
-                    "nectar": scores.get("nectar", 0),
+                    "birds": scores.get("bird_points") or 0,
+                    "bonus": scores.get("bonus") or 0,
+                    "endOfRound": scores.get("end_of_round") or 0,
+                    "eggs": scores.get("egg") or 0,
+                    "cachedFood": scores.get("cache") or 0,
+                    "tuckedCards": scores.get("tuck") or 0,
+                    "nectar": scores.get("nectar") or 0,
+                    "duetTokens": scores.get("duet_pts") or 0,
                 })
 
             # Create the game via API
