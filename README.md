@@ -61,94 +61,89 @@ docker compose build --no-cache  # Rebuild from scratch
 
 ## AWS Deployment
 
-The app deploys to EC2 via GitHub Actions, using ECR for container images and Caddy for HTTPS.
+All AWS infrastructure is managed via CDK in the `/infra` directory. This creates:
 
-### 1. Create ECR Repositories
+- **DynamoDB** - Games table with GSIs
+- **ECR** - Container repositories for app and scorebird
+- **VPC** - Public subnet configuration
+- **EC2** - t3.small instance with Docker pre-installed
+- **Elastic IP** - Static IP for DNS
+- **Security Group** - Ports 22, 80, 443
+- **IAM** - Roles and users for EC2 and GitHub Actions
+
+### 1. Prerequisites
+
+1. Install AWS CDK CLI:
+   ```bash
+   npm install -g aws-cdk
+   ```
+
+2. Configure AWS credentials:
+   ```bash
+   aws configure
+   ```
+
+3. Create an EC2 Key Pair in the AWS Console:
+   - Go to EC2 > Key Pairs > Create Key Pair
+   - Name it (e.g., `wingstats-key`)
+   - Download the `.pem` file and save it to `~/.ssh/`
+   - Set permissions: `chmod 400 ~/.ssh/wingstats-key.pem`
+
+### 2. Deploy Infrastructure
 
 ```bash
-aws ecr create-repository --repository-name wingstats --region us-east-1
-aws ecr create-repository --repository-name wingstats-scorebird --region us-east-1
+cd infra
+npm install
+
+# Deploy with your key pair name and domain
+npx cdk deploy -c keyPairName=wingstats-key -c domainName=wingstats.beatty.codes
 ```
 
-### 2. Set Up EC2 Instance
-
-1. Launch an EC2 instance (Amazon Linux 2023 or Ubuntu recommended)
-2. Install Docker and AWS CLI:
-
-   ```bash
-   # Amazon Linux
-   sudo yum install -y docker aws-cli
-   sudo systemctl enable --now docker
-   sudo usermod -aG docker $USER
-
-   # Ubuntu
-   sudo apt update && sudo apt install -y docker.io awscli
-   sudo systemctl enable --now docker
-   sudo usermod -aG docker $USER
-   ```
-
-3. Log out and back in for docker group to take effect
-
-4. Create the app directory:
-
-   ```bash
-   mkdir -p ~/wingstats
-   ```
-
-5. Copy deployment files to EC2:
-
-   ```bash
-   scp deploy/docker-compose.yml deploy/Caddyfile ec2-user@your-ec2-ip:~/wingstats/
-   scp scorebird-service/players.json ec2-user@your-ec2-ip:~/wingstats/
-   ```
+CDK will output:
+- `InstancePublicIP` - Use this for your DNS A record
+- `SSHCommand` - Command to SSH into the instance
+- `AppRepositoryUri` - ECR URI for the app image
+- `ScorebirdRepositoryUri` - ECR URI for scorebird image
+- `DeployUserName` - IAM user for GitHub Actions
 
 ### 3. Configure DNS
 
-Point your domain's A record to the EC2 instance's public IP address.
+Point your domain's A record to the `InstancePublicIP` from the CDK output.
 
-### 4. Configure GitHub Secrets
+### 4. Create IAM Access Keys
+
+Create access keys for the `wingstats-deploy` user:
+
+```bash
+aws iam create-access-key --user-name wingstats-deploy
+```
+
+Save the `AccessKeyId` and `SecretAccessKey` for GitHub secrets.
+
+### 5. Configure GitHub Secrets
 
 Add these secrets to your GitHub repository (Settings > Secrets and variables > Actions):
 
-| Secret | Description | Example |
-|--------|-------------|---------|
-| `AWS_ACCESS_KEY_ID` | AWS access key with ECR push permissions | `AKIA...` |
-| `AWS_SECRET_ACCESS_KEY` | AWS secret key | `wJalr...` |
-| `EC2_HOST` | EC2 public IP or hostname | `54.123.45.67` |
-| `EC2_USER` | SSH username | `ec2-user` or `ubuntu` |
-| `EC2_SSH_KEY` | Private SSH key (entire contents) | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
+| Secret | Description | Source |
+|--------|-------------|--------|
+| `AWS_ACCESS_KEY_ID` | Deploy user access key | Step 4 output |
+| `AWS_SECRET_ACCESS_KEY` | Deploy user secret key | Step 4 output |
+| `EC2_HOST` | EC2 Elastic IP | CDK `InstancePublicIP` output |
+| `EC2_USER` | SSH username | `ec2-user` |
+| `EC2_SSH_KEY` | Private SSH key contents | Contents of `~/.ssh/wingstats-key.pem` |
 | `DOMAIN` | Your domain name | `wingstats.beatty.codes` |
-| `DISCORD_BOT_TOKEN` | Discord bot token | `MTIz...` |
+| `DISCORD_BOT_TOKEN` | Discord bot token | Discord Developer Portal |
 
-### 5. IAM Permissions
+### 6. First Deployment
 
-The AWS credentials need these permissions:
+The EC2 instance is pre-configured with Docker, docker-compose, and all config files. For the first deploy:
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ecr:GetAuthorizationToken",
-        "ecr:BatchCheckLayerAvailability",
-        "ecr:GetDownloadUrlForLayer",
-        "ecr:BatchGetImage",
-        "ecr:PutImage",
-        "ecr:InitiateLayerUpload",
-        "ecr:UploadLayerPart",
-        "ecr:CompleteLayerUpload"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-```
+1. SSH into the instance:
+   ```bash
+   ssh -i ~/.ssh/wingstats-key.pem ec2-user@<instance-ip>
+   ```
 
-### 6. Deploy
-
-Push to the `main` branch to trigger automatic deployment, or manually trigger the workflow from GitHub Actions.
+2. The GitHub Actions workflow will handle subsequent deployments automatically when you push to `main`.
 
 ### Production Architecture
 
@@ -172,6 +167,21 @@ Internet
 └──────────┘
 ```
 
+### CDK Commands
+
+```bash
+cd infra
+
+# Preview changes
+npx cdk diff -c keyPairName=wingstats-key
+
+# Deploy
+npx cdk deploy -c keyPairName=wingstats-key -c domainName=wingstats.beatty.codes
+
+# Destroy all resources (careful!)
+npx cdk destroy -c keyPairName=wingstats-key
+```
+
 ## Discord Bot Commands
 
 - **@WingStats + image** - Parse a Wingspan scorecard and record the game
@@ -181,12 +191,14 @@ Internet
 - `/register <name>` - Register your Discord username to a Wingspan name
 - `/mynames` - Show your registered Wingspan names
 
-## Infrastructure (CDK)
+## Cost Estimates
 
-DynamoDB tables are managed via AWS CDK in the `/infra` directory:
+Monthly AWS costs (us-east-1):
 
-```bash
-cd infra
-npm install
-npx cdk deploy
-```
+| Resource | Estimated Cost |
+|----------|---------------|
+| EC2 t3.small | ~$15/month |
+| Elastic IP | Free (when attached) |
+| DynamoDB | ~$0 (pay per request) |
+| ECR | ~$1 (storage) |
+| **Total** | **~$16/month** |
