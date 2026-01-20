@@ -284,7 +284,7 @@ async def on_message(message: discord.Message):
                             low_score_mentions.append(member.mention)
 
             if low_score_mentions:
-                response_lines.append(f"\n:warning: {' '.join(low_score_mentions)} scored under 100!")
+                response_lines.append(f"\n{' '.join(low_score_mentions)}")
 
             # Update winners list with mapped names
             mapped_winners = [bot.find_best_player_match(w) for w in winners]
