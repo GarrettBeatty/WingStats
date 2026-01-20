@@ -32,6 +32,7 @@ SITE_BASE_URL = os.getenv("SITE_BASE_URL", "https://wingstats.beatty.codes")
 intents = discord.Intents.default()
 intents.message_content = True
 intents.messages = True
+intents.members = True  # Required to look up guild members for pings
 
 
 class WingStatsBot(discord.Client):
@@ -86,6 +87,20 @@ class WingStatsBot(discord.Client):
                     return wingspan_names[0]
 
         return parsed_name
+
+    def get_discord_username_for_wingspan_name(self, wingspan_name: str) -> Optional[str]:
+        """
+        Reverse lookup: find Discord username from a Wingspan name.
+        """
+        ws_lower = wingspan_name.lower().strip()
+
+        for discord_user, data in self.player_mappings.items():
+            wingspan_names = data.get("wingspan name", [])
+            for ws_name in wingspan_names:
+                if ws_name.lower() == ws_lower:
+                    return discord_user
+
+        return None
 
     async def setup_hook(self):
         """Called when bot is ready, syncs slash commands."""
@@ -253,6 +268,23 @@ async def on_message(message: discord.Message):
                 response_lines.append(
                     f"{i}. **{player['name']}** - {player.get('total', 0)} pts{medal}"
                 )
+
+            # Ping players who scored under 100
+            low_score_mentions = []
+            for player in sorted_players:
+                if player.get("total", 0) < 100:
+                    discord_username = bot.get_discord_username_for_wingspan_name(player["name"])
+                    if discord_username and message.guild:
+                        # Find the member in the guild by username
+                        member = discord.utils.find(
+                            lambda m: m.name.lower() == discord_username.lower().lstrip("."),
+                            message.guild.members
+                        )
+                        if member:
+                            low_score_mentions.append(member.mention)
+
+            if low_score_mentions:
+                response_lines.append(f"\n:warning: {' '.join(low_score_mentions)} scored under 100!")
 
             # Update winners list with mapped names
             mapped_winners = [bot.find_best_player_match(w) for w in winners]
