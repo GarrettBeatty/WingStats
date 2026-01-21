@@ -187,8 +187,9 @@ async def on_message(message: discord.Message):
                 parse_result = await resp.json()
 
             if not parse_result.get("success"):
+                error_detail = parse_result.get("error", "Unknown error")
                 await processing_msg.edit(
-                    content="Could not parse the scorecard. Please try a clearer image."
+                    content=f"Could not parse the scorecard: {error_detail}"
                 )
                 return
 

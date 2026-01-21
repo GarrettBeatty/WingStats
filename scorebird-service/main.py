@@ -140,10 +140,20 @@ def parse_with_scorebird(image: Image.Image, debug: bool = False) -> dict:
         # Get winners (filter out None values)
         winners = [w for w in result.get("winner", []) if w] if result else []
 
+        # Check for errors - either explicit error or UNKNOWN_PLAYER in winners
+        error_msg = result.get("error") if result else None
+        has_unknown_player = any(w == "UNKNOWN_PLAYER" for w in winners)
+
+        if has_unknown_player and not error_msg:
+            error_msg = "Could not identify one or more player names"
+
+        success = not error_msg and not has_unknown_player
+
         return {
             "players": players,
             "winners": winners,
-            "success": True,
+            "success": success,
+            "error": error_msg,
             "debug_image": debug_image_b64,
         }
     finally:
