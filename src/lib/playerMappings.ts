@@ -16,7 +16,7 @@ const playerMappings: Record<string, { "wingspan name": string[] }> = {
     "wingspan name": ["Azbueno", "Azmosis-Jones", "Azmal-The-Octopus"],
   },
   ".lex22": {
-    "wingspan name": ["itslex22"],
+    "wingspan name": ["itslex22", "itslex15"],
   },
   motherduck1234569: {
     "wingspan name": ["motherduck69"],
