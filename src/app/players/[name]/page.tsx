@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/statistics/stat-card";
 import { CategoryRadarChart } from "@/components/statistics/category-chart";
 import { ScoreTrendChart } from "@/components/statistics/score-trend-chart";
 import { CategoryBreakdown } from "@/components/statistics/category-breakdown";
+import { RecentGamesTable } from "@/components/game/recent-games-table";
 import type { Game, ScoreBreakdown } from "@/types/wingspan";
 
 interface PlayerStats {
@@ -200,6 +201,15 @@ export default function PlayerPage() {
         data={stats.categoryAverages}
         title="Average Points by Category"
       />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Games</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RecentGamesTable games={recentGames} />
+        </CardContent>
+      </Card>
     </div>
   );
 }
