@@ -257,17 +257,25 @@ async def on_message(message: discord.Message):
                 reverse=True
             )
 
+            # Calculate ranks with tie handling (competition ranking: 1, 1, 3)
+            prev_score = None
+            rank = 0
             for i, player in enumerate(sorted_players, 1):
+                score = player.get('total', 0)
+                if score != prev_score:
+                    rank = i  # New rank when score differs
+                prev_score = score
+
                 medal = ""
-                if i == 1:
+                if rank == 1:
                     medal = " :first_place:"
-                elif i == 2:
+                elif rank == 2:
                     medal = " :second_place:"
-                elif i == 3:
+                elif rank == 3:
                     medal = " :third_place:"
 
                 response_lines.append(
-                    f"{i}. **{player['name']}** - {player.get('total', 0)} pts{medal}"
+                    f"{rank}. **{player['name']}** - {score} pts{medal}"
                 )
 
             # Ping players who scored under 100
@@ -421,15 +429,9 @@ async def leaderboard_command(interaction: discord.Interaction):
         )
 
         leaderboard_text = []
+        prev_avg = None
+        rank = 0
         for i, player in enumerate(players, 1):
-            medal = ""
-            if i == 1:
-                medal = ":first_place: "
-            elif i == 2:
-                medal = ":second_place: "
-            elif i == 3:
-                medal = ":third_place: "
-
             # Handle new format: player stats are at top level, not nested in 'stats'
             # Use Discord username if available, otherwise playerName
             display_name = player.get("discordUsername") or player.get("playerName", "Unknown")
@@ -438,11 +440,24 @@ async def leaderboard_command(interaction: discord.Interaction):
             total_wins = player.get("totalWins", 0)
             aliases = player.get("aliases", [])
 
+            # Calculate rank with tie handling
+            if avg_score != prev_avg:
+                rank = i
+            prev_avg = avg_score
+
+            medal = ""
+            if rank == 1:
+                medal = ":first_place: "
+            elif rank == 2:
+                medal = ":second_place: "
+            elif rank == 3:
+                medal = ":third_place: "
+
             # Show account count if multiple
             account_info = f" ({len(aliases)} accounts)" if len(aliases) > 1 else ""
 
             leaderboard_text.append(
-                f"{medal}**{i}. {display_name}**{account_info} - "
+                f"{medal}**{rank}. {display_name}**{account_info} - "
                 f"Avg: {avg_score:.1f} | "
                 f"Games: {games_played} | "
                 f"Wins: {total_wins}"

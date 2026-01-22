@@ -37,7 +37,7 @@ export function RecentGamesTable({ games }: RecentGamesTableProps) {
       </TableHeader>
       <TableBody>
         {games.map((game) => {
-          const winner = game.players.find((p) => p.isWinner);
+          const winners = game.players.filter((p) => p.isWinner);
           const topScore = Math.max(...game.players.map((p) => p.totalScore));
 
           return (
@@ -60,10 +60,12 @@ export function RecentGamesTable({ games }: RecentGamesTableProps) {
                 </div>
               </TableCell>
               <TableCell>
-                {winner ? (
-                  <span className="font-medium">{winner.playerName}</span>
+                {winners.length > 0 ? (
+                  <span className="font-medium">
+                    {winners.map((w) => w.playerName).join(", ")}
+                  </span>
                 ) : (
-                  <span className="text-muted-foreground">Tie</span>
+                  <span className="text-muted-foreground">N/A</span>
                 )}
               </TableCell>
               <TableCell className="text-right font-mono">

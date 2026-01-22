@@ -272,8 +272,11 @@ export default function DashboardPage() {
               <CardContent>
                 <div className="space-y-4">
                   {stats.recentGames.slice(0, 4).map((game) => {
-                    const winner = game.players.find(p => p.isWinner);
+                    const winners = game.players.filter(p => p.isWinner);
                     const dateStr = new Date(game.playedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                    const winnerNames = winners.length > 0
+                      ? winners.map(w => w.playerName).join(", ")
+                      : "N/A";
                     return (
                       <Link
                         key={game.id}
@@ -289,12 +292,12 @@ export default function DashboardPage() {
                               {game.players.map(p => p.playerName).join(" vs ")}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              Winner: {winner?.playerName || "N/A"}
+                              Winner{winners.length > 1 ? "s" : ""}: {winnerNames}
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-medium">{winner?.totalScore || 0} pts</p>
+                          <p className="text-sm font-medium">{winners[0]?.totalScore || 0} pts</p>
                           <p className="text-xs text-muted-foreground">{dateStr}</p>
                         </div>
                       </Link>

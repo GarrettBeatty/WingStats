@@ -21,6 +21,8 @@ interface PlayerStats {
 interface LeaderboardEntry {
   rank: number;
   playerName: string;
+  discordUsername?: string;
+  aliases?: string[];
   gamesPlayed: number;
   winRate: number;
   averageScore: number;
@@ -38,15 +40,27 @@ export default function LeaderboardPage() {
         if (!response.ok) throw new Error("Failed to fetch leaderboard");
         const data = await response.json();
 
-        // Transform PlayerStats to LeaderboardEntry with rank
+        // Transform PlayerStats to LeaderboardEntry with rank (handling ties)
+        let prevScore: number | null = null;
+        let rank = 0;
         const leaderboard: LeaderboardEntry[] = data.players.map(
-          (player: PlayerStats, index: number) => ({
-            rank: index + 1,
-            playerName: player.playerName,
-            gamesPlayed: player.gamesPlayed,
-            winRate: player.winRate,
-            averageScore: player.averageScore,
-          })
+          (player: PlayerStats & { discordUsername?: string; aliases?: string[] }, index: number) => {
+            // Calculate rank with tie handling (competition ranking: 1, 1, 3)
+            if (player.averageScore !== prevScore) {
+              rank = index + 1;
+            }
+            prevScore = player.averageScore;
+
+            return {
+              rank,
+              playerName: player.playerName,
+              discordUsername: player.discordUsername,
+              aliases: player.aliases,
+              gamesPlayed: player.gamesPlayed,
+              winRate: player.winRate,
+              averageScore: player.averageScore,
+            };
+          }
         );
 
         setEntries(leaderboard);

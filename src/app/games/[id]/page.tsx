@@ -143,8 +143,20 @@ export default function GamePage() {
     );
   }
 
-  const winner = game.players.find((p) => p.isWinner);
+  const winners = game.players.filter((p) => p.isWinner);
   const sortedPlayers = [...game.players].sort((a, b) => b.totalScore - a.totalScore);
+
+  // Calculate ranks with tie handling (competition ranking: 1, 1, 3)
+  const playerRanks = new Map<string, number>();
+  let prevScore: number | null = null;
+  let rank = 0;
+  sortedPlayers.forEach((player, index) => {
+    if (player.totalScore !== prevScore) {
+      rank = index + 1;
+    }
+    prevScore = player.totalScore;
+    playerRanks.set(player.id, rank);
+  });
   const formattedDate = new Date(game.playedAt).toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -178,11 +190,13 @@ export default function GamePage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!isEditing && winner && (
+          {!isEditing && winners.length > 0 && (
             <>
               <Trophy className="h-5 w-5 text-yellow-500" />
-              <span className="font-medium">{winner.playerName}</span>
-              <Badge variant="default">{winner.totalScore} pts</Badge>
+              <span className="font-medium">
+                {winners.map((w) => w.playerName).join(", ")}
+              </span>
+              <Badge variant="default">{winners[0].totalScore} pts</Badge>
             </>
           )}
           {!isEditing && (
@@ -251,17 +265,19 @@ export default function GamePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedPlayers.map((player, index) => (
+                  {sortedPlayers.map((player) => {
+                  const playerRank = playerRanks.get(player.id) || 1;
+                  return (
                     <TableRow key={player.id}>
                       <TableCell>
-                        {index === 0 ? (
+                        {playerRank === 1 ? (
                           <Badge className="bg-yellow-500 hover:bg-yellow-600">1st</Badge>
-                        ) : index === 1 ? (
+                        ) : playerRank === 2 ? (
                           <Badge variant="secondary">2nd</Badge>
-                        ) : index === 2 ? (
+                        ) : playerRank === 3 ? (
                           <Badge variant="outline">3rd</Badge>
                         ) : (
-                          <span className="text-muted-foreground">{index + 1}th</span>
+                          <span className="text-muted-foreground">{playerRank}th</span>
                         )}
                       </TableCell>
                       <TableCell className="font-medium">
@@ -280,19 +296,20 @@ export default function GamePage() {
                       <TableCell className="text-right">{player.scores.duetTokens || 0}</TableCell>
                       <TableCell className="text-right font-bold">{player.totalScore}</TableCell>
                     </TableRow>
-                  ))}
+                  );
+                })}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {sortedPlayers.map((player, index) => (
+            {sortedPlayers.map((player) => (
               <Card key={player.id}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{player.playerName}</CardTitle>
-                    {index === 0 ? (
+                    {player.isWinner ? (
                       <Badge className="bg-yellow-500 hover:bg-yellow-600">Winner</Badge>
                     ) : (
                       <Badge variant="outline">{player.totalScore} pts</Badge>
