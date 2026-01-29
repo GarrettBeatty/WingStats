@@ -132,11 +132,12 @@ jobs:
           AWS_REGION: ${{ env.AWS_REGION }}
           DOMAIN: ${{ secrets.DOMAIN }}
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          GIPHY_API_KEY: ${{ secrets.GIPHY_API_KEY }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: ECR_IMAGE,ECR_SCOREBIRD_IMAGE,ECR_REGISTRY,AWS_REGION,DOMAIN,DISCORD_BOT_TOKEN
+          envs: ECR_IMAGE,ECR_SCOREBIRD_IMAGE,ECR_REGISTRY,AWS_REGION,DOMAIN,DISCORD_BOT_TOKEN,GIPHY_API_KEY
           script_stop: true
           script: |
             # Login to ECR using instance IAM role
@@ -158,6 +159,7 @@ jobs:
             echo "AWS_REGION=$AWS_REGION" >> .env
             echo "DOMAIN=$DOMAIN" >> .env
             echo "DISCORD_BOT_TOKEN=$DISCORD_BOT_TOKEN" >> .env
+            echo "GIPHY_API_KEY=$GIPHY_API_KEY" >> .env
 
             # Restart services
             docker compose down

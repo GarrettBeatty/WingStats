@@ -43,6 +43,7 @@ services:
       - SCOREBIRD_URL=http://scorebird:8000
       - PLAYERS_JSON_PATH=/app/ScoreBird/signups/players.json
       - SITE_BASE_URL=https://${DOMAIN}
+      - GIPHY_API_KEY=${GIPHY_API_KEY}
     volumes:
       - ./players.json:/app/ScoreBird/signups/players.json
     depends_on:
