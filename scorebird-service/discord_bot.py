@@ -118,6 +118,7 @@ async def on_ready():
     print(f"Logged in as {bot.user} (ID: {bot.user.id})")
     print(f"API Base URL: {API_BASE_URL}")
     print(f"ScoreBird URL: {SCOREBIRD_URL}")
+    print(f"Giphy API Key: {'configured' if GIPHY_API_KEY else 'NOT SET'}")
     print("------")
 
 
@@ -284,15 +285,19 @@ async def on_message(message: discord.Message):
             low_score_mentions = []
             for player in sorted_players:
                 if player.get("total", 0) < 100:
+                    print(f"Low score detected: {player['name']} with {player.get('total', 0)} pts")
                     discord_username = bot.get_discord_username_for_wingspan_name(player["name"])
                     if discord_username and message.guild:
-                        # Find the member in the guild by username
                         member = discord.utils.find(
                             lambda m: m.name.lower() == discord_username.lower().lstrip("."),
                             message.guild.members
                         )
                         if member:
                             low_score_mentions.append(member.mention)
+                        else:
+                            print(f"Could not find guild member for username: {discord_username}")
+                    else:
+                        print(f"No discord username mapping found for: {player['name']}")
 
             # Update winners list with mapped names
             mapped_winners = [bot.find_best_player_match(w) for w in winners]
@@ -304,6 +309,7 @@ async def on_message(message: discord.Message):
 
             await processing_msg.edit(content="\n".join(response_lines))
 
+            print(f"Low score mentions: {len(low_score_mentions)}")
             if low_score_mentions:
                 low_score_phrases = [
                     ("you almost had it buddy maybe next time", "almost had it"),
@@ -323,6 +329,7 @@ async def on_message(message: discord.Message):
                 ]
                 phrase, search_term = random.choice(low_score_phrases)
                 gif_url = ""
+                print(f"Searching Giphy for: {search_term}")
                 if GIPHY_API_KEY:
                     try:
                         async with aiohttp.ClientSession() as session:
@@ -342,6 +349,9 @@ async def on_message(message: discord.Message):
                 msg = f"{' '.join(low_score_mentions)} {phrase}"
                 if gif_url:
                     msg += f"\n{gif_url}"
+                    print(f"Sending GIF: {gif_url}")
+                else:
+                    print("No GIF URL obtained, sending message without GIF")
                 await message.channel.send(msg)
 
     except asyncio.TimeoutError:
