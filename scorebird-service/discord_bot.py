@@ -334,9 +334,11 @@ async def on_message(message: discord.Message):
                             async with session.get("https://api.giphy.com/v1/gifs/random", params=params) as resp:
                                 if resp.status == 200:
                                     data = await resp.json()
-                                    gif_url = data.get("data", {}).get("url", "")
-                    except Exception:
-                        pass
+                                    gif_url = data.get("data", {}).get("images", {}).get("original", {}).get("url", "")
+                                else:
+                                    print(f"Giphy API returned status {resp.status}: {await resp.text()}")
+                    except Exception as e:
+                        print(f"Error fetching GIF from Giphy: {e}")
                 msg = f"{' '.join(low_score_mentions)} {phrase}"
                 if gif_url:
                     msg += f"\n{gif_url}"
