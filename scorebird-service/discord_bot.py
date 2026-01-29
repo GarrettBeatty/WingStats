@@ -289,7 +289,7 @@ async def on_message(message: discord.Message):
                     discord_username = bot.get_discord_username_for_wingspan_name(player["name"])
                     if discord_username and message.guild:
                         member = discord.utils.find(
-                            lambda m: m.name.lower() == discord_username.lower().lstrip("."),
+                            lambda m: m.name.lower().lstrip(".") == discord_username.lower().lstrip("."),
                             message.guild.members
                         )
                         if member:
