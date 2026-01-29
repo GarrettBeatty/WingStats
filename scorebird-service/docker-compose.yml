@@ -23,6 +23,7 @@ services:
       - PYTHONUNBUFFERED=1
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
       - API_BASE_URL=${API_BASE_URL:-http://host.docker.internal:3000/api}
+      - GIPHY_API_KEY=${GIPHY_API_KEY}
       - SCOREBIRD_URL=http://scorebird:8000
       - PLAYERS_JSON_PATH=/app/ScoreBird/signups/players.json
     volumes:
