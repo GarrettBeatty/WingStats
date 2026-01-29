@@ -8,6 +8,7 @@ import asyncio
 import base64
 import json
 import os
+import random
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -27,6 +28,7 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:3000/api")
 SCOREBIRD_URL = os.getenv("SCOREBIRD_URL", "http://localhost:8000")
 PLAYERS_JSON_PATH = os.getenv("PLAYERS_JSON_PATH", "/app/ScoreBird/signups/players.json")
 SITE_BASE_URL = os.getenv("SITE_BASE_URL", "https://wingstats.beatty.codes")
+GIPHY_API_KEY = os.getenv("GIPHY_API_KEY", "")
 
 # Discord intents
 intents = discord.Intents.default()
@@ -292,9 +294,6 @@ async def on_message(message: discord.Message):
                         if member:
                             low_score_mentions.append(member.mention)
 
-            if low_score_mentions:
-                response_lines.append(f"\n{' '.join(low_score_mentions)}")
-
             # Update winners list with mapped names
             mapped_winners = [bot.find_best_player_match(w) for w in winners]
             if mapped_winners:
@@ -304,6 +303,44 @@ async def on_message(message: discord.Message):
             response_lines.append(f"\n:link: {game_url}")
 
             await processing_msg.edit(content="\n".join(response_lines))
+
+            if low_score_mentions:
+                low_score_phrases = [
+                    ("you almost had it buddy maybe next time", "almost had it"),
+                    ("looks like early bird does not catch the worm", "early bird fail"),
+                    ("how disappointing!", "disappointed"),
+                    ("did you even try?", "did you even try"),
+                    ("the birds are crying for you", "crying bird"),
+                    ("that's not flying, that's falling with style", "falling with style"),
+                    ("even a penguin could score higher", "penguin fail"),
+                    ("skill issue", "skill issue"),
+                    ("maybe try checkers instead", "you stink"),
+                    ("the nest egg is looking a little empty", "empty nest"),
+                    ("were you playing with your eyes closed?", "eyes closed"),
+                    ("not your finest migration", "bad migration"),
+                    ("even garrett could've scored better than this", "you suck"),
+                    ("honk honk", "clown"),
+                ]
+                phrase, search_term = random.choice(low_score_phrases)
+                gif_url = ""
+                if GIPHY_API_KEY:
+                    try:
+                        async with aiohttp.ClientSession() as session:
+                            params = {
+                                "api_key": GIPHY_API_KEY,
+                                "tag": search_term,
+                                "rating": "pg-13",
+                            }
+                            async with session.get("https://api.giphy.com/v1/gifs/random", params=params) as resp:
+                                if resp.status == 200:
+                                    data = await resp.json()
+                                    gif_url = data.get("data", {}).get("url", "")
+                    except Exception:
+                        pass
+                msg = f"{' '.join(low_score_mentions)} {phrase}"
+                if gif_url:
+                    msg += f"\n{gif_url}"
+                await message.channel.send(msg)
 
     except asyncio.TimeoutError:
         await processing_msg.edit(content="Request timed out. Please try again.")
