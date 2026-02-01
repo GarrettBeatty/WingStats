@@ -227,6 +227,16 @@ async def on_message(message: discord.Message):
                     "duetTokens": scores.get("duet_pts") or 0,
                 })
 
+            # Check for players whose score details failed to parse
+            manual_entry_players = []
+            for player, api_player in zip(players, api_players):
+                total = player.get("total", 0)
+                detail_sum = (api_player["birds"] + api_player["bonus"] + api_player["endOfRound"] +
+                              api_player["eggs"] + api_player["cachedFood"] + api_player["tuckedCards"] +
+                              api_player["nectar"] + api_player["duetTokens"])
+                if total > 0 and detail_sum == 0:
+                    manual_entry_players.append(player["name"])
+
             # Create the game via API
             game_data = {
                 "playedAt": datetime.now(timezone.utc).isoformat(),
@@ -308,6 +318,13 @@ async def on_message(message: discord.Message):
             response_lines.append(f"\n:link: {game_url}")
 
             await processing_msg.edit(content="\n".join(response_lines))
+
+            if manual_entry_players:
+                names = ", ".join(f"**{n}**" for n in manual_entry_players)
+                await message.channel.send(
+                    f"\u26a0\ufe0f Score details could not be parsed for {names}. "
+                    f"Please enter their scores manually: {game_url}"
+                )
 
             print(f"Low score mentions: {len(low_score_mentions)}")
             if low_score_mentions:
