@@ -9,7 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/statistics/stat-card";
 import { CategoryRadarChart } from "@/components/statistics/category-chart";
 import { ScoreTrendChart } from "@/components/statistics/score-trend-chart";
+import { RollingAverageChart } from "@/components/statistics/rolling-average-chart";
 import { CategoryBreakdown } from "@/components/statistics/category-breakdown";
+import { PlayerInsights } from "@/components/statistics/player-insights";
 import { RecentGamesTable } from "@/components/game/recent-games-table";
 import type { Game, ScoreBreakdown } from "@/types/wingspan";
 
@@ -35,6 +37,7 @@ interface PlayerIdentity {
 interface PlayerData {
   stats: PlayerStats;
   recentGames: Game[];
+  allGames: Game[];
   identity?: PlayerIdentity;
 }
 
@@ -97,7 +100,7 @@ export default function PlayerPage() {
     );
   }
 
-  const { stats, recentGames, identity } = data;
+  const { stats, recentGames, allGames, identity } = data;
 
   // Get all names to search for (aliases if registered, otherwise just the player name)
   const playerNames = identity?.wingspanNames.length
@@ -109,7 +112,7 @@ export default function PlayerPage() {
     return game.players.find((p) => playerNames.has(p.playerName.toLowerCase()));
   };
 
-  // Build trend data from recent games
+  // Build trend data from recent games (last 10 for score history)
   const trendData = recentGames
     .slice()
     .reverse()
@@ -120,6 +123,23 @@ export default function PlayerPage() {
         score: playerScore?.totalScore || 0,
       };
     });
+
+  // Build rolling average data from all games
+  const rollingAverageData = allGames
+    .slice()
+    .reverse()
+    .reduce((acc, game, index) => {
+      const playerScore = findPlayerScore(game);
+      const score = playerScore?.totalScore || 0;
+      const prevTotal = index > 0 ? acc[index - 1].average * index : 0;
+      const newAverage = (prevTotal + score) / (index + 1);
+      acc.push({
+        game: index + 1,
+        average: newAverage,
+        score,
+      });
+      return acc;
+    }, [] as { game: number; average: number; score: number }[]);
 
   // Calculate standard deviation
   const scores = recentGames.map((game) => {
@@ -184,9 +204,17 @@ export default function PlayerPage() {
         />
       </div>
 
+      {/* Player Insights */}
+      <PlayerInsights
+        allGames={allGames}
+        playerNames={playerNames}
+        averageScore={stats.averageScore}
+      />
+
+      {/* Charts Row 1: Score History & Rolling Average */}
       <div className="grid gap-6 lg:grid-cols-2">
         {trendData.length > 1 ? (
-          <ScoreTrendChart data={trendData} title="Score History" />
+          <ScoreTrendChart data={trendData} title="Recent Score History" />
         ) : (
           <Card className="p-8">
             <CardContent className="text-center text-muted-foreground">
@@ -194,13 +222,21 @@ export default function PlayerPage() {
             </CardContent>
           </Card>
         )}
-        <CategoryRadarChart data={stats.categoryAverages} title="Scoring Profile" />
+        <RollingAverageChart
+          data={rollingAverageData}
+          title="Average Over Time"
+          currentAverage={stats.averageScore}
+        />
       </div>
 
-      <CategoryBreakdown
-        data={stats.categoryAverages}
-        title="Average Points by Category"
-      />
+      {/* Charts Row 2: Scoring Profile & Category Breakdown */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <CategoryRadarChart data={stats.categoryAverages} title="Scoring Profile" />
+        <CategoryBreakdown
+          data={stats.categoryAverages}
+          title="Average Points by Category"
+        />
+      </div>
 
       <Card>
         <CardHeader>

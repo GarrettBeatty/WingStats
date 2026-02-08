@@ -221,7 +221,7 @@ export async function getRecentGames(limit: number = 10): Promise<Game[]> {
 
 export async function getGamesByPlayer(
   playerName: string,
-  limit: number = 50
+  limit?: number
 ): Promise<Game[]> {
   const result = await docClient.send(
     new QueryCommand({
@@ -232,7 +232,7 @@ export async function getGamesByPlayer(
         ":name": playerName,
       },
       ScanIndexForward: false,
-      Limit: limit,
+      ...(limit && { Limit: limit }),
     })
   );
 
@@ -337,7 +337,7 @@ export async function calculatePlayerStats(
  */
 export async function getGamesByDiscordUser(
   discordUsername: string,
-  limit: number = 50
+  limit?: number
 ): Promise<Game[]> {
   const wingspanNames = getWingspanNames(discordUsername);
   if (wingspanNames.length === 0) {
@@ -363,7 +363,7 @@ export async function getGamesByDiscordUser(
     (a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime()
   );
 
-  return allGames.slice(0, limit);
+  return limit ? allGames.slice(0, limit) : allGames;
 }
 
 /**
@@ -469,7 +469,7 @@ export async function calculatePlayerStatsAggregated(
  */
 export async function getGamesByPlayerAggregated(
   name: string,
-  limit: number = 50
+  limit?: number
 ): Promise<Game[]> {
   const identity = resolvePlayerIdentity(name);
 

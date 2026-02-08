@@ -28,12 +28,13 @@ export async function GET(
       return NextResponse.json({ error: "Player not found" }, { status: 404 });
     }
 
-    // Get recent games (aggregated if registered)
-    const games = await getGamesByPlayerAggregated(decodedName, 10);
+    // Get all games for charts and history (aggregated if registered)
+    const allGames = await getGamesByPlayerAggregated(decodedName);
 
     return NextResponse.json({
       stats,
-      recentGames: games,
+      recentGames: allGames.slice(0, 10), // Keep recent games for backward compatibility
+      allGames, // All games for charts
       identity: {
         isRegistered: identity.isRegistered,
         discordUsername: identity.discordUsername,
