@@ -30,6 +30,9 @@ const playerMappings: Record<string, { "wingspan name": string[] }> = {
   mediumcheese: {
     "wingspan name": ["MobileCheese", "NotSoBigCheese"],
   },
+  kayla: {
+    "wingspan name": ["Kayloodle"],
+  },
 };
 
 // Build reverse lookup map: wingspan name (lowercase) -> discord username
