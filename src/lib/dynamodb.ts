@@ -496,7 +496,6 @@ export async function getAllPlayerNames(): Promise<string[]> {
       ExpressionAttributeValues: {
         ":pk": "GAMES",
       },
-      Limit: 100,
     })
   );
 
