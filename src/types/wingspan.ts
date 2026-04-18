@@ -71,6 +71,33 @@ export interface LeaderboardEntry {
   averageScore: number;
 }
 
+export interface RivalryNetworkNode {
+  id: string;
+  label: string;
+  gamesPlayed: number;
+  totalWins: number;
+  winRate: number;
+  averageScore: number;
+}
+
+export interface RivalryNetworkEdge {
+  id: string;
+  source: string;
+  target: string;
+  gamesTogether: number;
+  sourceWins: number;
+  targetWins: number;
+  ties: number;
+  averageMargin: number;
+  leaderId: string | null;
+}
+
+export interface RivalryNetwork {
+  nodes: RivalryNetworkNode[];
+  edges: RivalryNetworkEdge[];
+  minimumSharedGames: number;
+}
+
 // API response types
 export interface ParsedScoreResponse {
   success: boolean;

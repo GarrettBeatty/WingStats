@@ -12,7 +12,6 @@ import type { Game, PlayerScore, ScoreBreakdown } from "@/types/wingspan";
 import {
   getDiscordUsername,
   getWingspanNames,
-  getAllDiscordUsers,
   resolvePlayerIdentity,
 } from "./playerMappings";
 
@@ -73,8 +72,6 @@ export async function createGame(input: CreateGameInput): Promise<Game> {
   });
 
   const maxScore = Math.max(...playersWithScores.map((p) => p.totalScore));
-  const winners = playersWithScores.filter((p) => p.totalScore === maxScore);
-
   // Store game metadata
   await docClient.send(
     new PutCommand({
@@ -219,6 +216,46 @@ export async function getRecentGames(limit: number = 10): Promise<Game[]> {
   return games;
 }
 
+export async function getAllGames(): Promise<Game[]> {
+  const metadataItems: Record<string, unknown>[] = [];
+  let exclusiveStartKey: Record<string, unknown> | undefined;
+
+  do {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: GAMES_TABLE,
+        IndexName: "GSI1-ByDate",
+        KeyConditionExpression: "GSI1PK = :pk",
+        ExpressionAttributeValues: {
+          ":pk": "GAMES",
+        },
+        ScanIndexForward: false,
+        ExclusiveStartKey: exclusiveStartKey,
+      })
+    );
+
+    metadataItems.push(...(result.Items || []));
+    exclusiveStartKey = result.LastEvaluatedKey as
+      | Record<string, unknown>
+      | undefined;
+  } while (exclusiveStartKey);
+
+  const games: Game[] = [];
+  for (const item of metadataItems) {
+    const gameId = item.gameId;
+    if (typeof gameId !== "string") {
+      continue;
+    }
+
+    const game = await getGame(gameId);
+    if (game) {
+      games.push(game);
+    }
+  }
+
+  return games;
+}
+
 export async function getGamesByPlayer(
   playerName: string,
   limit?: number
@@ -248,7 +285,6 @@ export async function getGamesByPlayer(
 
   return games;
 }
-
 // ============================================
 // Player Stats Operations
 // ============================================
@@ -486,25 +522,10 @@ export async function getGamesByPlayerAggregated(
 // ============================================
 
 export async function getAllPlayerNames(): Promise<string[]> {
-  // This is a simplified approach - in production you'd want to maintain
-  // a separate list of players or use a different access pattern
-  const result = await docClient.send(
-    new QueryCommand({
-      TableName: GAMES_TABLE,
-      IndexName: "GSI1-ByDate",
-      KeyConditionExpression: "GSI1PK = :pk",
-      ExpressionAttributeValues: {
-        ":pk": "GAMES",
-      },
-    })
-  );
-
+  const games = await getAllGames();
   const playerNames = new Set<string>();
-  for (const item of result.Items || []) {
-    const game = await getGame(item.gameId);
-    if (game) {
-      game.players.forEach((p) => playerNames.add(p.playerName));
-    }
+  for (const game of games) {
+    game.players.forEach((player) => playerNames.add(player.playerName));
   }
 
   return Array.from(playerNames);

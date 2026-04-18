@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { RivalryNetworkGraph } from "@/components/statistics/rivalry-network-graph";
 import {
   ChartConfig,
   ChartContainer,
@@ -21,7 +22,7 @@ import {
   Cell,
 } from "recharts";
 import Link from "next/link";
-import type { Game, ScoreBreakdown } from "@/types/wingspan";
+import type { Game, RivalryNetwork, ScoreBreakdown } from "@/types/wingspan";
 
 interface PlayerStats {
   playerName: string;
@@ -42,6 +43,7 @@ interface StatsData {
   categoryAverages: ScoreBreakdown;
   recentGames: Game[];
   topPlayers: PlayerStats[];
+  rivalryNetwork: RivalryNetwork;
 }
 
 const categoryChartConfig = {
@@ -361,6 +363,8 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+
+          <RivalryNetworkGraph rivalryNetwork={stats.rivalryNetwork} />
         </>
       )}
     </div>

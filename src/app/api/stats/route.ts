@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { getRecentGames, getLeaderboard } from "@/lib/dynamodb";
+import { getAllGames, getLeaderboard } from "@/lib/dynamodb";
+import { buildRivalryNetwork } from "@/lib/rivalries";
 
 // GET /api/stats - Get dashboard statistics
 export async function GET() {
   try {
     const [games, leaderboard] = await Promise.all([
-      getRecentGames(100), // Get up to 100 games for stats
+      getAllGames(),
       getLeaderboard(),
     ]);
 
@@ -13,7 +14,6 @@ export async function GET() {
     let totalScore = 0;
     let gameCount = 0;
     let highestScore = 0;
-    let totalWins = 0;
 
     for (const game of games) {
       for (const player of game.players) {
@@ -21,9 +21,6 @@ export async function GET() {
         gameCount++;
         if (player.totalScore > highestScore) {
           highestScore = player.totalScore;
-        }
-        if (player.isWinner) {
-          totalWins++;
         }
       }
     }
@@ -77,6 +74,7 @@ export async function GET() {
       categoryAverages,
       recentGames: games.slice(0, 5),
       topPlayers: leaderboard.slice(0, 3),
+      rivalryNetwork: buildRivalryNetwork(games),
     });
   } catch (error) {
     console.error("Error fetching stats:", error);
