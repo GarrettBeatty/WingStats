@@ -27,6 +27,8 @@ interface EdgeAccumulator {
   targetWins: number;
   ties: number;
   totalMargin: number;
+  sourceTotalScore: number;
+  targetTotalScore: number;
 }
 
 function toCanonicalParticipant(
@@ -101,9 +103,13 @@ export function buildRivalryNetwork(games: Game[]): RivalryNetwork {
           targetWins: 0,
           ties: 0,
           totalMargin: 0,
+          sourceTotalScore: 0,
+          targetTotalScore: 0,
         };
 
         edge.gamesTogether += 1;
+        edge.sourceTotalScore += source.totalScore;
+        edge.targetTotalScore += target.totalScore;
 
         if (source.totalScore > target.totalScore) {
           edge.sourceWins += 1;
@@ -146,6 +152,8 @@ export function buildRivalryNetwork(games: Game[]): RivalryNetwork {
         targetWins: edge.targetWins,
         ties: edge.ties,
         averageMargin: edge.totalMargin / edge.gamesTogether,
+        sourceAverageScore: edge.sourceTotalScore / edge.gamesTogether,
+        targetAverageScore: edge.targetTotalScore / edge.gamesTogether,
         leaderId:
           edge.sourceWins === edge.targetWins
             ? null

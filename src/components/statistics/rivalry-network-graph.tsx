@@ -178,14 +178,15 @@ export function RivalryNetworkGraph({
                         strokeWidth={1.5 + (edge.gamesTogether / maxSharedGames) * 6}
                         strokeLinecap="round"
                       >
-                        <title>
-                          {(labels.get(edge.source) ?? edge.source)} vs{" "}
-                          {(labels.get(edge.target) ?? edge.target)}: {edge.gamesTogether} shared
-                          games, {edge.sourceWins}-{edge.targetWins}
-                          {edge.ties > 0 ? ` with ${edge.ties} ties` : ""}, average margin{" "}
-                          {edge.averageMargin.toFixed(1)}
-                        </title>
-                      </line>
+                         <title>
+                           {(labels.get(edge.source) ?? edge.source)} vs{" "}
+                           {(labels.get(edge.target) ?? edge.target)}: {edge.gamesTogether} shared
+                           games, {edge.sourceWins}-{edge.targetWins}
+                           {edge.ties > 0 ? ` with ${edge.ties} ties` : ""}, average margin{" "}
+                           {edge.averageMargin.toFixed(1)}, averages{" "}
+                           {edge.sourceAverageScore.toFixed(1)}-{edge.targetAverageScore.toFixed(1)}
+                         </title>
+                       </line>
                     );
                   })}
                 </g>
@@ -272,6 +273,10 @@ export function RivalryNetworkGraph({
                       <p>
                         {edge.gamesTogether} shared games
                         {edge.ties > 0 ? ` · ${edge.ties} ties` : ""}
+                      </p>
+                      <p>
+                        Avg score: {sourceLabel} {edge.sourceAverageScore.toFixed(1)} ·{" "}
+                        {targetLabel} {edge.targetAverageScore.toFixed(1)}
                       </p>
                       <p>Average margin: {edge.averageMargin.toFixed(1)} points</p>
                     </div>

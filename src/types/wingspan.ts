@@ -89,6 +89,8 @@ export interface RivalryNetworkEdge {
   targetWins: number;
   ties: number;
   averageMargin: number;
+  sourceAverageScore: number;
+  targetAverageScore: number;
   leaderId: string | null;
 }
 
