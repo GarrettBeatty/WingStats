@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # ScoreBird Service Dockerfile
-FROM --platform=linux/arm64 python:3.11-slim
+FROM python:3.11-slim
 
 # Install system dependencies for OpenCV and Tesseract
 RUN apt-get update --fix-missing && \
