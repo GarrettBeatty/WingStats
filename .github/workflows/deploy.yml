@@ -8,8 +8,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  APP_IMAGE: ghcr.io/${{ github.repository_owner }}/wingstats
-  SCOREBIRD_IMAGE: ghcr.io/${{ github.repository_owner }}/wingstats-scorebird
+  APP_IMAGE: ghcr.io/garrettbeatty/wingstats
+  SCOREBIRD_IMAGE: ghcr.io/garrettbeatty/wingstats-scorebird
 
 permissions:
   contents: read
