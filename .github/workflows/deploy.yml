@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: Deploy to Lightsail
 
 on:
   push:
@@ -7,13 +7,13 @@ on:
   workflow_dispatch:
 
 env:
-  AWS_REGION: us-east-1
-  ECR_REPOSITORY: wingstats
-  ECR_SCOREBIRD_REPOSITORY: wingstats-scorebird
+  REGISTRY: ghcr.io
+  APP_IMAGE: ghcr.io/${{ github.repository_owner }}/wingstats
+  SCOREBIRD_IMAGE: ghcr.io/${{ github.repository_owner }}/wingstats-scorebird
 
 permissions:
-  id-token: write   # Required for OIDC
   contents: read
+  packages: write  # Required for GHCR
 
 concurrency:
   group: deploy
@@ -21,10 +21,9 @@ concurrency:
 
 jobs:
   build-app:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     outputs:
       image: ${{ steps.build-image.outputs.image }}
-      registry: ${{ steps.login-ecr.outputs.registry }}
 
     steps:
       - name: Checkout code
@@ -33,38 +32,31 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push main app image
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/arm64
+          platforms: linux/amd64
           push: true
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+            ${{ env.APP_IMAGE }}:${{ github.sha }}
+            ${{ env.APP_IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Set image output
         id: build-image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+        run: echo "image=${{ env.APP_IMAGE }}:${{ github.sha }}" >> $GITHUB_OUTPUT
 
   build-scorebird:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     outputs:
       image: ${{ steps.build-image.outputs.image }}
 
@@ -75,35 +67,28 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push scorebird image
         uses: docker/build-push-action@v6
         with:
           context: ./scorebird-service
-          platforms: linux/arm64
+          platforms: linux/amd64
           push: true
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_SCOREBIRD_REPOSITORY }}:${{ github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_SCOREBIRD_REPOSITORY }}:latest
+            ${{ env.SCOREBIRD_IMAGE }}:${{ github.sha }}
+            ${{ env.SCOREBIRD_IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Set image output
         id: build-image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          echo "image=$ECR_REGISTRY/$ECR_SCOREBIRD_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+        run: echo "image=${{ env.SCOREBIRD_IMAGE }}:${{ github.sha }}" >> $GITHUB_OUTPUT
 
   deploy:
     runs-on: ubuntu-latest
@@ -113,53 +98,60 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Copy config files to EC2
+      - name: Copy config files to Lightsail
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           source: "scorebird-service/players.json,deploy/docker-compose.yml,deploy/Caddyfile"
           target: "~/wingstats/"
           strip_components: 1
 
-      - name: Deploy to EC2
+      - name: Deploy to Lightsail
         uses: appleboy/ssh-action@v1.0.3
         env:
-          ECR_IMAGE: ${{ needs.build-app.outputs.image }}
-          ECR_SCOREBIRD_IMAGE: ${{ needs.build-scorebird.outputs.image }}
-          ECR_REGISTRY: ${{ needs.build-app.outputs.registry }}
-          AWS_REGION: ${{ env.AWS_REGION }}
+          APP_IMAGE: ${{ needs.build-app.outputs.image }}
+          SCOREBIRD_IMAGE: ${{ needs.build-scorebird.outputs.image }}
+          REGISTRY: ${{ env.REGISTRY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           DOMAIN: ${{ secrets.DOMAIN }}
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           GIPHY_API_KEY: ${{ secrets.GIPHY_API_KEY }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          envs: ECR_IMAGE,ECR_SCOREBIRD_IMAGE,ECR_REGISTRY,AWS_REGION,DOMAIN,DISCORD_BOT_TOKEN,GIPHY_API_KEY
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          envs: APP_IMAGE,SCOREBIRD_IMAGE,REGISTRY,AWS_REGION,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,DOMAIN,DISCORD_BOT_TOKEN,GIPHY_API_KEY,GITHUB_ACTOR,GITHUB_TOKEN
           script_stop: true
           script: |
-            # Login to ECR using instance IAM role
-            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+            # Login to GHCR
+            echo "$GITHUB_TOKEN" | docker login $REGISTRY -u $GITHUB_ACTOR --password-stdin
 
-            # Navigate to app directory
             cd ~/wingstats
 
-            # Prune all unused Docker images and build cache to free up space
+            # Prune unused images and build cache to free up space
             docker system prune -af
 
             # Pull latest images
-            docker pull $ECR_IMAGE
-            docker pull $ECR_SCOREBIRD_IMAGE
+            docker pull $APP_IMAGE
+            docker pull $SCOREBIRD_IMAGE
 
-            # Update .env file
-            echo "ECR_IMAGE=$ECR_IMAGE" > .env
-            echo "ECR_SCOREBIRD_IMAGE=$ECR_SCOREBIRD_IMAGE" >> .env
-            echo "AWS_REGION=$AWS_REGION" >> .env
-            echo "DOMAIN=$DOMAIN" >> .env
-            echo "DISCORD_BOT_TOKEN=$DISCORD_BOT_TOKEN" >> .env
-            echo "GIPHY_API_KEY=$GIPHY_API_KEY" >> .env
+            # Write .env
+            cat > .env <<EOF
+            APP_IMAGE=$APP_IMAGE
+            SCOREBIRD_IMAGE=$SCOREBIRD_IMAGE
+            AWS_REGION=$AWS_REGION
+            AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+            AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+            DOMAIN=$DOMAIN
+            DISCORD_BOT_TOKEN=$DISCORD_BOT_TOKEN
+            GIPHY_API_KEY=$GIPHY_API_KEY
+            EOF
 
             # Restart services
             docker compose down

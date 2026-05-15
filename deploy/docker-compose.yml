@@ -1,11 +1,13 @@
 services:
   app:
-    image: ${ECR_IMAGE}
+    image: ${APP_IMAGE}
     container_name: wingstats-app
     restart: unless-stopped
     environment:
       - NODE_ENV=production
       - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - SCOREBIRD_URL=http://scorebird:8000
     networks:
       - web
@@ -16,7 +18,7 @@ services:
         condition: service_healthy
 
   scorebird:
-    image: ${ECR_SCOREBIRD_IMAGE:-wingstats-scorebird:latest}
+    image: ${SCOREBIRD_IMAGE:-wingstats-scorebird:latest}
     container_name: wingstats-scorebird
     restart: unless-stopped
     environment:
@@ -32,7 +34,7 @@ services:
       - web
 
   discord-bot:
-    image: ${ECR_SCOREBIRD_IMAGE:-wingstats-scorebird:latest}
+    image: ${SCOREBIRD_IMAGE:-wingstats-scorebird:latest}
     container_name: wingstats-discord-bot
     command: ["python", "discord_bot.py"]
     restart: unless-stopped
