@@ -329,19 +329,19 @@ async def on_message(message: discord.Message):
             print(f"Low score mentions: {len(low_score_mentions)}")
             if low_score_mentions:
                 low_score_phrases = [
-                    ("you almost had it buddy maybe next time", "almost had it"),
-                    ("looks like early bird does not catch the worm", "early bird fail"),
-                    ("how disappointing!", "disappointed"),
-                    ("did you even try?", "did you even try"),
-                    ("the birds are crying for you", "crying bird"),
-                    ("that's not flying, that's falling with style", "falling with style"),
-                    ("even a penguin could score higher", "penguin fail"),
-                    ("skill issue", "skill issue"),
-                    ("maybe try checkers instead", "you stink"),
-                    ("the nest egg is looking a little empty", "empty nest"),
-                    ("were you playing with your eyes closed?", "eyes closed"),
-                    ("not your finest migration", "bad migration"),
-                    ("even garrett could've scored better than this", "you suck"),
+                    ("you almost had it buddy maybe next time", "clown"),
+                    ("looks like early bird does not catch the worm", "clown"),
+                    ("how disappointing!", "clown"),
+                    ("did you even try?", "clown"),
+                    ("the birds are crying for you", "clown"),
+                    ("that's not flying, that's falling with style", "clown"),
+                    ("even a penguin could score higher", "clown"),
+                    ("skill issue", "clown"),
+                    ("maybe try checkers instead", "clown"),
+                    ("the nest egg is looking a little empty", "clown"),
+                    ("were you playing with your eyes closed?", "clown"),
+                    ("not your finest migration", "clown"),
+                    ("even garrett could've scored better than this", "clown"),
                     ("honk honk", "clown"),
                 ]
                 phrase, search_term = random.choice(low_score_phrases)
